@@ -3,5 +3,10 @@ packages:
   - 'packages/*'
 allowBuilds:
   '@prisma/engines': true
+  cpu-features: false
   esbuild: true
   prisma: true
+  protobufjs: true
+  ssh2: false
+minimumReleaseAgeExclude:
+  - pg-boss@12.40.0

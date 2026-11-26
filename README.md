@@ -4,13 +4,12 @@ SaaS multi-tenant de gestão de arenas esportivas. A especificação vigente é 
 
 ## Desenvolvimento
 
-Requer Node.js, pnpm e Docker. Copie `.env.example` para `.env`, execute `docker compose up -d`, `pnpm install` e `pnpm dev`.
+Requer Node.js 24, pnpm 11.25 e Docker. Copie `.env.example` para `.env`, execute `docker compose up -d postgres mailpit`, `pnpm install` e `pnpm dev`. O worker experimental inicia separadamente com `pnpm dev:worker`.
 
 Web: http://localhost:3000 · API: http://localhost:3001/api/v1/health · Mailpit: http://localhost:8025.
 
-O projeto está no início da Fase 1. A prova de ocupação com PostgreSQL e Prisma está em `apps/api/prisma`; veja [ADR-004](docs/decisions/ADR-004-occupancy-spike.md). Autenticação e reservas ainda não foram implementadas.
+O projeto está na Fase 1. As provas de ocupação, isolamento, idempotência e jobs usam schemas experimentais; veja [gate](docs/PHASE1_GATE.md). Autenticação, reservas e financeiro comerciais ainda não foram implementados. As telas `/theme-preview` e `/agenda-preview` são demonstrativas.
 
 ## Verificação
 
-Com o PostgreSQL local ativo: `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm --filter @arenahub/api exec prisma migrate deploy`, `pnpm db:check` e `pnpm test:integration`.
-
+Execute `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm build`. A integração cria seu próprio PostgreSQL descartável; não requer migrations no banco de desenvolvimento. `pnpm db:check` é opcional e verifica o schema experimental do banco local após `pnpm db:migrate`.

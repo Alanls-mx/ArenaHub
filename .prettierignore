@@ -1,0 +1,7 @@
+node_modules
+dist
+.next
+pnpm-lock.yaml
+apps/api/src/generated
+docs/ARENAHUB_MASTER_V3.1.md
+docs/ARENAHUB_MASTER_V3.2.md

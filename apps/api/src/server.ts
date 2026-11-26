@@ -1,32 +1,11 @@
-import Fastify from 'fastify';
-import helmet from '@fastify/helmet';
+import { buildApp } from './app.js';
 import { env } from './config.js';
 
-const app = Fastify({ logger: { redact: ['req.headers.authorization', 'req.headers.cookie'] } });
-
-await app.register(helmet);
-
-app.get('/api/v1/health', async () => ({ status: 'ok' }));
-
-app.setErrorHandler((error, request, reply) => {
-  request.log.error(error);
-  const statusCode = error instanceof Error && 'statusCode' in error && typeof error.statusCode === 'number'
-    ? error.statusCode : 500;
-  const status = statusCode < 500 ? statusCode : 500;
-  reply.code(status).type('application/problem+json').send({
-    type: 'https://arenahub.app/errors/internal-error',
-    title: status === 500 ? 'Erro interno' : 'Requisição inválida',
-    status,
-    code: status === 500 ? 'INTERNAL_ERROR' : 'VALIDATION_FAILED',
-    requestId: request.id,
-    errors: []
-  });
-});
-
+const app = buildApp({ databaseUrl: env.DATABASE_URL, logLevel: env.LOG_LEVEL });
 try {
-  await app.listen({ port: env.API_PORT, host: '0.0.0.0' });
+  await app.listen({ port: env.API_PORT, host: env.HOST });
 } catch (error) {
   app.log.error(error);
-  process.exit(1);
+  await app.close();
+  process.exitCode = 1;
 }
-

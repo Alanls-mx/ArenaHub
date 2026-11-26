@@ -10,7 +10,7 @@ export const ThemeSchema = z.object({
     displayName: z.string().min(1),
     logo: z.string(),
     logoMark: z.string(),
-    favicon: z.string()
+    favicon: z.string(),
   }),
   fonts: z.object({ heading: z.string(), body: z.string() }),
   radius: z.enum(['sharp', 'rounded', 'soft']),
@@ -25,10 +25,9 @@ export const ThemeSchema = z.object({
     primaryHover: color,
     primaryContrast: color,
     accent: color,
-    brandGradient: z.tuple([color, color])
+    brandGradient: z.tuple([color, color]),
   }),
-  effects: z.object({ glow: z.boolean() })
+  effects: z.object({ glow: z.boolean() }),
 });
 
 export type Theme = z.infer<typeof ThemeSchema>;
-

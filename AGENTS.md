@@ -4,14 +4,14 @@
 
 SaaS multi-tenant para gestão de arenas. Leia `docs/AI_CONTEXT.md` e a seção pertinente de `docs/ARENAHUB_MASTER_V3.2.md` antes de alterar comportamento. A especificação descreve o produto; o código e os testes mostram o estado implementado. Registre decisões novas em `docs/decisions/`.
 
-O projeto está no início da Fase 1. `apps/api/prisma` contém apenas o spike técnico no schema PostgreSQL `occupancy_spike`; suas tabelas não são o modelo final de produção.
+O projeto está na Fase 1. `apps/api/prisma` contém provas técnicas no schema PostgreSQL `occupancy_spike` (ocupação e idempotência); suas tabelas não são o modelo final de produção. `pg-boss` administra `arena_jobs`. Veja `docs/PHASE1_GATE.md` para o estado real.
 
 ## Estrutura e comandos existentes
 
 - `apps/api`: Fastify, Prisma e testes de integração.
 - `apps/web`: Next.js e tema da Web.
 - `packages/contracts`: schemas e códigos de erro compartilhados.
-- `pnpm dev`, `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration`, `pnpm db:migrate`, `pnpm db:check`.
+- `pnpm dev`, `pnpm dev:worker`, `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration`, `pnpm db:migrate`, `pnpm db:check`.
 - Banco local: `docker compose up -d postgres`. Nunca use dados reais no banco local ou no CI.
 
 ## Isolamento entre arenas
@@ -56,4 +56,3 @@ O projeto está no início da Fase 1. `apps/api/prisma` contém apenas o spike t
 4. Atualize documentação quando comportamento, contrato ou decisão mudar. Não declare uma fase concluída antes de passar pelo gate correspondente.
 
 Ao concluir, informe arquivos alterados, comportamento, migrations, testes, pendências e riscos conhecidos.
-
