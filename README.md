@@ -1,6 +1,6 @@
 # ArenaHub
 
-SaaS multi-tenant de gestão de arenas esportivas. A especificação vigente é [docs/ARENAHUB_MASTER_V3.1.md](docs/ARENAHUB_MASTER_V3.1.md).
+SaaS multi-tenant de gestão de arenas esportivas. A especificação vigente é [docs/ARENAHUB_MASTER_V3.2.md](docs/ARENAHUB_MASTER_V3.2.md). Instruções para agentes estão em [AGENTS.md](AGENTS.md).
 
 ## Desenvolvimento
 
