@@ -41,8 +41,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm build
-      - run: pnpm test
       - run: pnpm --filter @arenahub/api exec prisma migrate deploy
       - run: pnpm db:check
-      - run: pnpm test:integration
+      - run: pnpm test
+
 
