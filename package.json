@@ -1,0 +1,20 @@
+{
+  "name": "arenahub",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @arenahub/api --filter @arenahub/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:integration": "pnpm --filter @arenahub/api test:integration",
+    "db:check": "pnpm --filter @arenahub/api db:check",
+    "db:migrate": "pnpm --filter @arenahub/api db:migrate",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.10",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.2"
+  }
+}

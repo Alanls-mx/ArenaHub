@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "name": "LumixEngine Dark",
+  "mode": "dark",
+  "brand": {
+    "displayName": "ArenaHub",
+    "logo": "assets/logo.svg",
+    "logoMark": "assets/mark.svg",
+    "favicon": "assets/favicon.png"
+  },
+  "fonts": { "heading": "plus-jakarta-sans", "body": "plus-jakarta-sans" },
+  "radius": "rounded",
+  "colors": {
+    "background": "#0A0E15",
+    "surface": "#10151F",
+    "surfaceRaised": "#161C28",
+    "border": "#1F2733",
+    "text": "#F4F6FA",
+    "textMuted": "#9BA5B4",
+    "primary": "#1DBF7F",
+    "primaryHover": "#18A66E",
+    "primaryContrast": "#03140C",
+    "accent": "#6EE7B7",
+    "brandGradient": ["#7C3AED", "#3B82F6"]
+  },
+  "effects": { "glow": true }
+}
+

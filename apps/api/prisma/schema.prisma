@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Spike da Fase 1: tabelas mínimas, sem FKs de reserva/bloqueio.
+model ScheduleUnit {
+  id             String @id @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  name           String
+  occupancies    ScheduleOccupancy[]
+
+  @@unique([organizationId, id])
+  @@map("schedule_units")
+}
+
+model ScheduleOccupancy {
+  id             String  @id @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  unitId         String  @map("unit_id") @db.Uuid
+  startAt        DateTime @map("start_at") @db.Timestamptz(3)
+  endAt          DateTime @map("end_at") @db.Timestamptz(3)
+  period         Unsupported("tstzrange")? @default(dbgenerated())
+  active         Boolean @default(true)
+  unit           ScheduleUnit @relation(fields: [organizationId, unitId], references: [organizationId, id])
+
+  @@unique([organizationId, id])
+  @@index([organizationId, startAt])
+  @@map("schedule_occupancies")
+}
+

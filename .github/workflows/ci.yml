@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: arenahub
+          POSTGRES_PASSWORD: arenahub
+          POSTGRES_DB: arenahub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U arenahub -d arenahub"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://arenahub:arenahub@localhost:5432/arenahub
+      API_PORT: 3001
+      WEB_ORIGIN: http://localhost:3000
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm --filter @arenahub/api exec prisma migrate deploy
+      - run: pnpm db:check
+      - run: pnpm test:integration
+
