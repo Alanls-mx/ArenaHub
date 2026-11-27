@@ -11,5 +11,6 @@ A missão autorizou as etapas 2A a 2G. O [ADR-010](decisions/ADR-010-product-and
 | 2E    | Convites sem privilégio inicial, memberships, suspensão, revogação, administração de propriedade com senha e auditoria |
 | 2F    | Login e painel responsivo, seletor de organização, sessões, membros e editor de cargos                                 |
 | 2G    | PostgreSQL descartável, concorrência sobre propriedade, isolamento HTTP, validação visual e gates                      |
+| 2H    | Fundação de domínios por organização: hostname único, estados, resolução segura do host e contrato de proxy            |
 
 A próxima solicitação lê novamente membership e capabilities. Permissões financeiras são independentes no catálogo. A Fase 5 entregará os endpoints e as telas de pagamento.

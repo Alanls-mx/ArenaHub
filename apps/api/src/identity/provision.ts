@@ -2,19 +2,21 @@ import { emailSchema, passwordSchema, templates } from '@arenahub/contracts';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import { audit, encodePassword, transaction } from './core.js';
+import { isReservedSlug } from './host.js';
 async function createOrganization(db: PoolClient, input: unknown) {
   const data = z
     .strictObject({
       slug: z
         .string()
         .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-        .max(80),
+        .max(63),
       name: z.string().trim().min(1).max(120),
       email: emailSchema,
       password: passwordSchema,
       ownerName: z.string().min(1).max(120),
     })
     .parse(input);
+  if (isReservedSlug(data.slug)) throw new Error('Slug reservado');
 
   await db.query(
     'INSERT INTO users(email,name,password_hash) VALUES($1,$2,$3) ON CONFLICT(email) DO NOTHING',

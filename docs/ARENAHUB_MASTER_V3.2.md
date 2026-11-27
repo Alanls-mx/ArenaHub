@@ -76,7 +76,7 @@ Cada item fora do MVP só entra com um consumidor real ou demanda comprovada no 
 
 ### 1.7. Decisões aprovadas para implementação
 
-A [matriz oficial das onze decisões](decisions/ADR-010-product-and-access.md) rege as fases 2–5. A [matriz HTTP implementada](PHASE2_ACCESS.md) especifica os controles da identidade. As matrizes de papéis dos fluxos futuros descrevem templates iniciais ajustáveis.
+A [matriz oficial das doze decisões](decisions/ADR-010-product-and-access.md) rege as fases 2–6. O [ADR-011](decisions/ADR-011-organization-domains.md) define a fundação de domínios por organização. A [matriz HTTP implementada](PHASE2_ACCESS.md) especifica os controles da identidade. As matrizes de papéis dos fluxos futuros descrevem templates iniciais ajustáveis.
 
 ## 2. Arquitetura, stack e monorepo
 
@@ -1431,6 +1431,8 @@ Decisões arquiteturais ficam em ADRs curtos em `docs/decisions/`. ADR-003/004/0
 | 007 | Temas por arena | JSON validado + variáveis CSS + `organization_themes` | Fase 0 |
 | 008 | Hospedagem | A, B ou C da §13.1 conforme custo | Fase 0 |
 | 009 | Estratégia de produto | Desenvolvimento guiado pela visão do fundador; entrevistas adiadas | 27/11/2026 |
+| 010 | Decisões do fundador | Identidade, acesso e direção das fases comerciais | Fase 2 |
+| 011 | Domínios por organização | Domínio próprio ou subdomínio com hostname único e ativação controlada | Fases 2, 3 e 6 |
 
 **Plano B do ADR-004:** se o Prisma gerar drift ou tentar remover a coluna gerada ou a constraint, (1) manter o Prisma para o restante e acessar `schedule_occupancies` só por SQL tipado com Kysely dentro do módulo `scheduling`, ou (2) usar `prisma migrate` só para aplicar migrations escritas à mão (sem `migrate dev` gerando SQL). Não trocar o ORM da aplicação inteira.
 

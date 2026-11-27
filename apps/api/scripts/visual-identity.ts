@@ -16,7 +16,12 @@ const webDir = fileURLToPath(new URL('../../web/', import.meta.url));
 const next = createRequire(webDir + 'package.json')('next')({ dev: false, dir: webDir });
 const server = createServer(next.getRequestHandler());
 const origin = 'http://localhost:34871',
-  app = buildApp({ databaseUrl: db, origin, logLevel: 'silent' });
+  app = buildApp({
+    databaseUrl: db,
+    origin,
+    logLevel: 'silent',
+    proxy: { internalHost: '127.0.0.1:3001', ips: ['127.0.0.1'] },
+  });
 const evidence = fileURLToPath(new URL('../../../docs/evidence/phase2/', import.meta.url));
 let browser;
 const mailbox = await new GenericContainer('axllent/mailpit:v1.22.3')
@@ -50,6 +55,11 @@ try {
   await seedLocalOrganizations(pool, password);
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage();
+  const apiResponses: string[] = [];
+  page.on('response', (response) => {
+    if (response.url().includes('/api/v1/'))
+      apiResponses.push(`${response.status()} ${new URL(response.url()).pathname}`);
+  });
   for (const [width, height] of [
     [1440, 900],
     [768, 1024],
@@ -62,7 +72,13 @@ try {
       await page.getByLabel('Senha', { exact: true }).fill(password);
       await page.getByRole('button', { name: 'Entrar', exact: true }).press('Enter');
     }
-    await page.getByText('Você é Owner desta arena.').waitFor();
+    try {
+      await page.getByText('Você é Owner desta arena.').waitFor();
+    } catch (error) {
+      throw new Error(`Estado autenticado ausente; respostas API: ${apiResponses.join(', ')}`, {
+        cause: error,
+      });
+    }
     await page.getByLabel('Arena ativa').selectOption('arena-sul');
     await page.locator('summary').filter({ hasText: 'Cargos e permissões' }).click();
     await page.locator('summary').filter({ hasText: 'Criar cargo' }).click();
@@ -104,6 +120,9 @@ try {
   await recipient.getByLabel('Senha', { exact: true }).fill(changed);
   await recipient.getByRole('button', { name: 'Entrar', exact: true }).click();
   await recipient.getByRole('heading', { name: 'Equipe da arena' }).waitFor();
+} catch (error) {
+  process.exitCode = 1;
+  throw error;
 } finally {
   await mailbox.stop();
   await browser?.close();

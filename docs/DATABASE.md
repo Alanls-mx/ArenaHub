@@ -12,6 +12,8 @@ As migrations `20261127010000_identity` e `20261127011000_organization_settings`
 
 A migration `20261127012000_owner_integrity` valida a existência de Owner no commit inclusive em desativação global de usuário e protege a auditoria contra edição, exclusão e truncamento.
 
+A migration `20261127013000_organization_domains` acrescenta `organization_domains`, com hostname globalmente único, associação à organização, tipo de domínio e estado de ativação. O resolvedor atende somente hosts ativos e vincula o host ao slug usado na rota. O cadastro, a verificação DNS e a ativação operacional pertencem às fases seguintes, conforme [ADR-011](decisions/ADR-011-organization-domains.md).
+
 As verificações semânticas do spike continuam separadas. As tabelas da fila são administradas por pg-boss. Identidade usa o pool da API com transações e search_path local. RLS continua experimental conforme ADR-002.
 
 ## Modelo comercial planejado

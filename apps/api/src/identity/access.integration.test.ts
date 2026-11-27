@@ -296,6 +296,30 @@ describe('identidade, propriedade e cargos por arena', () => {
     await expect(
       pool.query('DELETE FROM arena_identity.audit_logs WHERE organization_id=$1', [id]),
     ).rejects.toMatchObject({ code: '23514' });
+    await pool.query('CREATE ROLE arenahub_runtime_audit NOLOGIN NOSUPERUSER');
+    await pool.query('GRANT USAGE ON SCHEMA arena_identity TO arenahub_runtime_audit');
+    await pool.query(
+      'GRANT SELECT ON arena_identity.organizations, arena_identity.users, arena_identity.memberships TO arenahub_runtime_audit',
+    );
+    await pool.query(
+      'GRANT UPDATE(is_owner) ON arena_identity.memberships TO arenahub_runtime_audit',
+    );
+    await pool.query(
+      'GRANT UPDATE(active) ON arena_identity.organizations TO arenahub_runtime_audit',
+    );
+    const runtime = await pool.connect();
+    try {
+      await runtime.query('BEGIN');
+      await runtime.query('SET LOCAL ROLE arenahub_runtime_audit');
+      await runtime.query(
+        'UPDATE arena_identity.memberships SET is_owner=false WHERE organization_id=$1',
+        [id],
+      );
+      await expect(runtime.query('COMMIT')).rejects.toMatchObject({ code: '23514' });
+    } finally {
+      await runtime.query('ROLLBACK');
+      runtime.release();
+    }
   });
   it('limita tentativas inválidas e recusa origem externa mesmo com cookie e CSRF válidos', async () => {
     const slug = 'origin-' + randomUUID(),
@@ -321,5 +345,98 @@ describe('identidade, propriedade e cargos por arena', () => {
       (await request('POST', '/auth/login', undefined, { email: 'missing@example.org', password }))
         .statusCode,
     ).toBe(429);
+  });
+  it('associa hostname ativo ao tenant e rejeita Host desconhecido ou outro slug', async () => {
+    await expect(
+      pool.query("INSERT INTO arena_identity.organizations(slug,name) VALUES('api','Inválida')"),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query('INSERT INTO arena_identity.organizations(slug,name) VALUES($1,$2)', [
+        'a'.repeat(64),
+        'Inválida',
+      ]),
+    ).rejects.toMatchObject({ code: '23514' });
+    const slug = 'domain-' + randomUUID();
+    const otherSlug = 'domain-' + randomUUID();
+    const address = slug + '@example.org';
+    const id = await provision(pool, {
+      slug,
+      name: slug,
+      email: address,
+      ownerName: 'Owner',
+      password,
+    });
+    await provision(pool, {
+      slug: otherSlug,
+      name: otherSlug,
+      email: address,
+      ownerName: 'Owner',
+      password,
+    });
+    const auth = await login(address);
+    const hostname = 'arena.example.test';
+    await pool.query(
+      "INSERT INTO arena_identity.organization_domains(organization_id,hostname,kind) VALUES($1,$2,'custom')",
+      [id, hostname],
+    );
+    await expect(
+      pool.query(
+        "INSERT INTO arena_identity.organization_domains(organization_id,hostname,kind,status,activated_at) VALUES($1,$2,'custom','active',now())",
+        [id, hostname],
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    const call = (host: string, path: string, forwardedHost?: string) =>
+      app.inject({
+        method: 'GET',
+        url: root + path,
+        headers: {
+          host,
+          cookie: auth.cookie,
+          ...(forwardedHost ? { 'x-forwarded-host': forwardedHost } : {}),
+        },
+      });
+    expect((await call(hostname, '/orgs/' + slug + '/context')).statusCode).toBe(404);
+    await expect(
+      pool.query(
+        "UPDATE arena_identity.organization_domains SET status='active' WHERE hostname=$1",
+        [hostname],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await pool.query(
+      "UPDATE arena_identity.organization_domains SET status='active',activated_at=now() WHERE hostname=$1",
+      [hostname],
+    );
+    expect((await call(hostname, '/orgs/' + slug + '/context')).statusCode).toBe(200);
+    expect((await call(hostname, '/orgs/' + otherSlug + '/context')).statusCode).toBe(404);
+    expect((await call(hostname, '/auth/me')).json().organizations).toEqual([{ slug, name: slug }]);
+    expect((await call('unknown.example.test', '/auth/me')).statusCode).toBe(404);
+    expect((await call('unknown.example.test', '/auth/me', hostname)).statusCode).toBe(404);
+    expect((await call(hostname + ':99999', '/auth/me')).statusCode).toBe(404);
+    const proxied = buildApp({
+      databaseUrl: await requireDisposableDatabase(),
+      logLevel: 'silent',
+      proxy: { internalHost: '127.0.0.1:3001', ips: ['127.0.0.1'] },
+    });
+    try {
+      const throughProxy = (publicHost: string) =>
+        proxied.inject({
+          method: 'GET',
+          url: root + '/orgs/' + slug + '/context',
+          headers: {
+            host: '127.0.0.1:3001',
+            'x-forwarded-host': publicHost,
+            cookie: auth.cookie,
+          },
+        });
+      expect((await throughProxy(hostname)).statusCode).toBe(200);
+      expect((await throughProxy('unknown.example.test')).statusCode).toBe(404);
+    } finally {
+      await proxied.close();
+    }
+    await pool.query(
+      "UPDATE arena_identity.organization_domains SET status='suspended',activated_at=NULL WHERE hostname=$1",
+      [hostname],
+    );
+    expect((await call(hostname, '/orgs/' + slug + '/context')).statusCode).toBe(404);
   });
 });

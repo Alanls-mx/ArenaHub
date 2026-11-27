@@ -8,6 +8,7 @@ export type Delivery = (email: string, kind: 'invite' | 'reset', secret: string)
 export interface IdentityOptions {
   origin: string;
   deliver: Delivery;
+  hostOrganization?: (request: FastifyRequest) => string | undefined;
 }
 const cookieName = '__Host-session';
 export function originCheck(r: FastifyRequest, origin: string) {
@@ -90,8 +91,8 @@ export async function authRoutes(app: FastifyInstance, pool: Pool, options: Iden
     transaction(pool, async (db) => {
       const s = await session(db, r, options.origin);
       const orgs = await db.query(
-        "SELECT slug,name FROM organizations o JOIN memberships m ON m.organization_id=o.id WHERE o.active AND m.status='active' AND m.user_id=$1 ORDER BY name",
-        [s.user_id],
+        "SELECT slug,name FROM organizations o JOIN memberships m ON m.organization_id=o.id WHERE o.active AND m.status='active' AND m.user_id=$1 AND ($2::uuid IS NULL OR o.id=$2) ORDER BY name",
+        [s.user_id, options.hostOrganization?.(r) ?? null],
       );
       return { name: s.name, email: s.email, csrf: s.csrf, organizations: orgs.rows };
     }),

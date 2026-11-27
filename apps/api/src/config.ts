@@ -6,6 +6,8 @@ const EnvSchema = z.object({
   HOST: z.string().min(1).default('127.0.0.1'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   WEB_ORIGIN: z.string().url().default('http://localhost:3000'),
+  PROXY_INTERNAL_HOST: z.string().min(1).default('127.0.0.1:3001'),
+  TRUSTED_PROXY_IPS: z.string().default('127.0.0.1'),
   DATABASE_URL: z.string().url(),
 });
 

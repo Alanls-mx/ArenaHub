@@ -5,6 +5,7 @@ import nodemailer from 'nodemailer';
 import { Pool } from 'pg';
 import { ZodError } from 'zod';
 import { AccessError } from './identity/core.js';
+import { hostResolver, type TrustedProxy } from './identity/host.js';
 import { authRoutes, type Delivery } from './identity/session.js';
 import { teamRoutes } from './identity/team.js';
 import { IdempotencyError } from './shared/idempotency/index.js';
@@ -14,6 +15,7 @@ export function buildApp(options: {
   logLevel?: string;
   origin?: string;
   deliver?: Delivery;
+  proxy?: TrustedProxy;
 }) {
   const app = Fastify({
     logger: {
@@ -59,11 +61,13 @@ export function buildApp(options: {
     });
   void app.register(
     async (identity) => {
+      const host = hostResolver(pool, origin, options.proxy);
+      identity.addHook('onRequest', host.resolve);
       identity.addHook('onSend', async (_request, reply) => {
         reply.header('Cache-Control', 'no-store');
       });
-      await authRoutes(identity, pool, { origin, deliver });
-      teamRoutes(identity, pool, { origin, deliver });
+      await authRoutes(identity, pool, { origin, deliver, hostOrganization: host.organization });
+      teamRoutes(identity, pool, { origin, deliver, hostOrganization: host.organization });
     },
     { prefix: '/api/v1' },
   );

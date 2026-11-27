@@ -18,9 +18,20 @@ erDiagram
     ROLES ||--o{ ROLE_PERMISSIONS : concede
     PERMISSIONS ||--o{ ROLE_PERMISSIONS : cataloga
     ORGANIZATIONS ||--o| ORGANIZATION_THEMES : apresenta
+    ORGANIZATIONS ||--o{ ORGANIZATION_DOMAINS : vincula
     MEMBERSHIPS ||--o{ INVITES : convida
     USERS ||--o{ AUDIT_LOGS : atua
     ORGANIZATIONS o|--o{ AUDIT_LOGS : contextualiza
+
+    ORGANIZATION_DOMAINS {
+      uuid id PK
+      uuid organization_id FK
+      text hostname UK
+      text kind
+      text status
+      timestamptz created_at
+      timestamptz activated_at
+    }
 ```
 
 A chave da membership é (organization_id, user_id). is_owner é um atributo protegido. As duas pontas das atribuições compartilham organization_id. Cada organização operacional é provisionada com um Owner ativo. Instâncias de cargo têm nome único por organização, sem distinguir caixa.

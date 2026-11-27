@@ -90,8 +90,22 @@ model organizations {
   invites             invites[]
   memberships         memberships[]
   organization_themes organization_themes?
+  organization_domains organization_domains[]
   roles               roles[]
 
+  @@schema("arena_identity")
+}
+
+model organization_domains {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String @db.Uuid
+  hostname String @unique
+  kind String
+  status String @default("pending")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  activated_at DateTime? @db.Timestamptz(6)
+  organizations organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@index([organization_id], map: "organization_domains_org")
   @@schema("arena_identity")
 }
 

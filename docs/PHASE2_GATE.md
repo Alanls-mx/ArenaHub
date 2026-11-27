@@ -28,3 +28,20 @@ A aplicação usa Argon2id, token opaco em cookie, hash no banco, verificação 
 ## Pendências para etapas posteriores
 
 Selecionar o serviço SMTP de produção e verificar entregabilidade no domínio real. Antes do piloto, avaliar os papéis PostgreSQL, RLS e desempenho com volume representativo conforme ADR-002. As fases de agenda e financeiro dependem dos detalhes da política central de cancelamento, da base e arredondamento do primeiro mês proporcional e da homologação do Pix Mercado Pago por recebedor. As entrevistas seguem programadas para quando o produto estiver demonstrável.
+
+## Revalidação independente da Fase 2 — 27/11/2026
+
+O [relatório de auditoria direcionada](PHASE2_AUDIT.md) verificou as 12 decisões oficiais e corrigiu a omissão da fundação de domínios por arena. O fluxo atualizado é navegador → proxy Next → resolução do host público no Fastify → sessão, membership e capabilities → PostgreSQL e auditoria. Host desconhecido ou de outra arena recebe 404; o cabeçalho encaminhado só é aceito do proxy e IP configurados. A ativação operacional de domínios próprios permanece futura.
+
+**Veredito local revalidado: APROVADO TECNICAMENTE EM AMBIENTE LOCAL.** Não há P0/P1 remanescente conhecido. CI remoto da branch ainda pendente; o encerramento definitivo aguarda essa prova no SHA publicado.
+
+| Gate da revalidação                      | Resultado                                                                                              |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Unitários                                | 19/19                                                                                                  |
+| Integração                               | 59/59 em dez arquivos                                                                                  |
+| Migrations                               | Sete aplicadas em PostgreSQL 16 descartável; quatro da Fase 2, incluindo domínios                      |
+| `db:check`                               | Sem drift Prisma; triggers de Owner/auditoria, FKs, catálogo e índice de hostname verificados          |
+| Visual                                   | Next, Fastify, Chrome, PostgreSQL e Mailpit; desktop 1440 × 900, tablet 768 × 1024 e celular 390 × 844 |
+| Lint, formatação, typecheck, build, diff | Aprovados                                                                                              |
+
+A auditoria original da Fase 1 e o gate anterior permanecem como registros históricos. Na preparação para publicação, `checkout`, `pnpm/action-setup` e `setup-node` foram atualizadas para v5, cujo runtime é Node 24; a eficácia dessa manutenção depende do CI remoto. O PR da Fase 2 ainda não havia sido publicado nesta revalidação local.

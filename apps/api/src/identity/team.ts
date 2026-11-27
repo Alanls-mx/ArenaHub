@@ -33,6 +33,8 @@ export function teamRoutes(app: FastifyInstance, pool: Pool, options: IdentityOp
       )
     ).rows[0]?.id as string | undefined;
     if (!org) deny(404);
+    const boundOrganization = options.hostOrganization?.(r);
+    if (boundOrganization && boundOrganization !== org) deny(404);
     const actor = (
       await db.query(
         "SELECT is_owner FROM memberships WHERE organization_id=$1 AND user_id=$2 AND status='active'",
