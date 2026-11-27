@@ -29,14 +29,16 @@ Após a liberação, o teste verifica resposta bem-sucedida, valor de domínio i
 - `pnpm build` — passou.
 - `git diff --check` — passou.
 
-O encerramento anterior do fork Vitest com código Windows `0xC0000409` permanece sem causa comprovada. A consulta local de eventos não encontrou evento de WER/Application Error correspondente; duas execuções completas posteriores (default e serial) passaram. Não há base para atribuir o episódio a uma dependência ou tecnologia específica. CI do GitHub ainda precisa confirmar o workflow Linux.
+O encerramento anterior do fork Vitest com código Windows `0xC0000409` permanece sem causa comprovada. A consulta local de eventos não encontrou evento de WER/Application Error correspondente; duas execuções completas posteriores (default e serial) passaram. Não há base para atribuir o episódio a uma dependência ou tecnologia específica. O workflow Linux foi posteriormente confirmado no SHA `c1ad42c332d3dc6ef5fcdeaa12a2a83e34bb8f70`, conforme abaixo.
 
 ### CI remoto e correção do teste concorrente
 
 As duas execuções do workflow no SHA `4fba73ba52ceabbb35d5a7a791fea0eb64cb2636` falharam na mesma assertion de `jobs.integration.test.ts`: esperava seis jobs observados, mas após 5 s havia quatro. `db:check`, A2 e os três cenários de outage passaram no Linux; o build foi pulado porque a etapa de integração falhou. O teste concorrente isolado local completou os seis jobs em 6,11 s, confirmando que seu limite interno antigo (5 s) era menor que o tempo observado com o polling padrão de 2 s.
 
-A correção somente aumentou a espera interna para no máximo 15 s e o timeout total do teste para 30 s, manteve as assertions de seis jobs e IDs distintos e adicionou estados persistidos à mensagem de falha. A execução isolada e a suíte local completa (53/53) passaram depois da mudança. **Reexecução de CI para o novo SHA ainda pendente; o CI remoto não está aprovado até essa confirmação.**
+A correção somente aumentou a espera interna para no máximo 15 s e o timeout total do teste para 30 s, manteve as assertions de seis jobs e IDs distintos e adicionou estados persistidos à mensagem de falha. A execução isolada e a suíte local completa (53/53) passaram depois da mudança.
+
+CI final: [GitHub Actions, execução 45932228283](https://github.com/Alanls-mx/ArenaHub/actions/runs/45932228283), SHA `c1ad42c332d3dc6ef5fcdeaa12a2a83e34bb8f70`, `ubuntu-latest`, Node 24.22.3, pnpm 11.25.0. Job `verify` passou: instalação congelada, geração Prisma, lint, formatação, typecheck, unitários, verificação do Docker, integração (53/53, incluindo os três cenários de processo real e A2), `db:check` no runner descartável e build. O workflow emitiu aviso de manutenção: as actions `checkout@v4`, `setup-node@v4` e `pnpm/action-setup@v4` têm runtime Node 20 depreciado e foram forçadas a Node 24; o job terminou com sucesso.
 
 ## Estado do gate
 
-**A implementação técnica está aprovada localmente; o gate integral da Fase 1 continua aberto.** Permanecem pendentes: workflow remoto deste SHA, 3 a 5 entrevistas com proprietários, decisões comerciais resultantes e consolidação final de `docs/DATABASE.md` e ERD. O modelo definitivo não deve ser congelado antes das entrevistas. `occupancy_spike` permanece experimental e a Fase 2 não foi iniciada.
+**FASE 1 TECNICAMENTE APROVADA — PENDÊNCIAS COMERCIAIS. O gate integral continua aberto.** Permanecem pendentes: 3 a 5 entrevistas com proprietários, decisões comerciais resultantes e consolidação final de `docs/DATABASE.md` e ERD. O modelo definitivo não deve ser congelado antes das entrevistas. `occupancy_spike` permanece experimental e a Fase 2 não foi iniciada.
