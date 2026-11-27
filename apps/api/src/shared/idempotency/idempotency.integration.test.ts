@@ -23,6 +23,19 @@ async function waitForContender(): Promise<void> {
   throw new Error('Concorrente não chegou ao lock');
 }
 
+async function waitForEffectLock(): Promise<void> {
+  for (let attempt = 0; attempt < 150; attempt++) {
+    const result = await pool.query<{ total: number }>(
+      `SELECT count(*)::int AS total FROM pg_stat_activity
+       WHERE datname=current_database() AND wait_event_type='Lock'
+         AND query LIKE 'SELECT id FROM occupancy_spike.idempotency_lock_rows%'`,
+    );
+    if ((result.rows[0]?.total ?? 0) > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error('Effect did not reach the business row lock');
+}
+
 function input(overrides: Partial<IdempotencyInput> = {}): IdempotencyInput {
   return {
     organizationId: org,
@@ -39,11 +52,17 @@ function input(overrides: Partial<IdempotencyInput> = {}): IdempotencyInput {
 beforeAll(async () => {
   pool = new Pool({ connectionString: await requireDisposableDatabase(), max: 5 });
   await pool.query('CREATE TABLE occupancy_spike.idempotency_effects (id uuid PRIMARY KEY)');
+  await pool.query(
+    'CREATE TABLE occupancy_spike.idempotency_lock_rows (id uuid PRIMARY KEY, value integer NOT NULL)',
+  );
   ready = true;
 });
 
 afterAll(async () => {
-  if (ready) await pool.query('DROP TABLE occupancy_spike.idempotency_effects');
+  if (ready) {
+    await pool.query('DROP TABLE occupancy_spike.idempotency_lock_rows');
+    await pool.query('DROP TABLE occupancy_spike.idempotency_effects');
+  }
   await pool?.end();
 });
 
@@ -180,6 +199,69 @@ describe('idempotência transacional', () => {
       await executeIdempotent(pool, request, async () => ({ status: 201, body: {} })),
     ).toMatchObject({ status: 200 });
   }, 10_000);
+
+  it('não aplica o timeout de aquisição da chave ao lock de negócio dentro do efeito', async () => {
+    const request = input();
+    const rowId = randomUUID();
+    const effectId = randomUUID();
+    await pool.query(
+      'INSERT INTO occupancy_spike.idempotency_lock_rows (id, value) VALUES ($1, 0)',
+      [rowId],
+    );
+    const blocker = await pool.connect();
+    await blocker.query('BEGIN');
+    await blocker.query(
+      'SELECT id FROM occupancy_spike.idempotency_lock_rows WHERE id=$1 FOR UPDATE',
+      [rowId],
+    );
+
+    let effectStarted: () => void = () => undefined;
+    const started = new Promise<void>((resolve) => {
+      effectStarted = resolve;
+    });
+    const effect = executeIdempotent(pool, request, async (client) => {
+      effectStarted();
+      await client.query(
+        'SELECT id FROM occupancy_spike.idempotency_lock_rows WHERE id=$1 FOR UPDATE',
+        [rowId],
+      );
+      await client.query(
+        'UPDATE occupancy_spike.idempotency_lock_rows SET value=value+1 WHERE id=$1',
+        [rowId],
+      );
+      await client.query('INSERT INTO occupancy_spike.idempotency_effects (id) VALUES ($1)', [
+        effectId,
+      ]);
+      return { status: 200, body: { updated: true } };
+    });
+
+    try {
+      await started;
+      await waitForEffectLock();
+      await pool.query('SELECT pg_sleep(5.2)');
+      await blocker.query('COMMIT');
+      expect(await effect).toEqual({ status: 200, body: { updated: true } });
+    } finally {
+      await blocker.query('ROLLBACK').catch(() => undefined);
+      blocker.release();
+    }
+
+    const persisted = await pool.query<{ value: number }>(
+      'SELECT value FROM occupancy_spike.idempotency_lock_rows WHERE id=$1',
+      [rowId],
+    );
+    const effects = await pool.query(
+      'SELECT id FROM occupancy_spike.idempotency_effects WHERE id=$1',
+      [effectId],
+    );
+    const storedKey = await pool.query(
+      'SELECT id FROM occupancy_spike.idempotency_records WHERE organization_id=$1 AND user_id=$2 AND key=$3',
+      [request.organizationId, request.userId, request.key],
+    );
+    expect(persisted.rows[0]?.value).toBe(1);
+    expect(effects.rowCount).toBe(1);
+    expect(storedKey.rowCount).toBe(1);
+  }, 12_000);
 
   it('recusa chave inválida e remove expiradas', async () => {
     await expect(
