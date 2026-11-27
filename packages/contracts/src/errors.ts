@@ -15,8 +15,7 @@ export const errorCodes = [
   'INVALID_LOCAL_TIME',
   'AMBIGUOUS_LOCAL_TIME',
   'RATE_LIMITED',
-  'INTERNAL_ERROR'
+  'INTERNAL_ERROR',
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];
-

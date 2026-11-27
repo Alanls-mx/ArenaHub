@@ -4,14 +4,14 @@
 
 SaaS multi-tenant para gestão de arenas. Leia `docs/AI_CONTEXT.md` e a seção pertinente de `docs/ARENAHUB_MASTER_V3.2.md` antes de alterar comportamento. A especificação descreve o produto; o código e os testes mostram o estado implementado. Registre decisões novas em `docs/decisions/`.
 
-O projeto está no início da Fase 1. `apps/api/prisma` contém apenas o spike técnico no schema PostgreSQL `occupancy_spike`; suas tabelas não são o modelo final de produção.
+O projeto está na Fase 1. `apps/api/prisma` contém provas técnicas no schema PostgreSQL `occupancy_spike` (ocupação e idempotência); suas tabelas não são o modelo final de produção. `pg-boss` administra `arena_jobs`. Veja `docs/PHASE1_GATE.md` para o estado real.
 
 ## Estrutura e comandos existentes
 
 - `apps/api`: Fastify, Prisma e testes de integração.
 - `apps/web`: Next.js e tema da Web.
 - `packages/contracts`: schemas e códigos de erro compartilhados.
-- `pnpm dev`, `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration`, `pnpm db:migrate`, `pnpm db:check`.
+- `pnpm dev`, `pnpm dev:worker`, `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration`, `pnpm db:migrate`, `pnpm db:check`.
 - Banco local: `docker compose up -d postgres`. Nunca use dados reais no banco local ou no CI.
 
 ## Isolamento entre arenas
@@ -19,7 +19,7 @@ O projeto está no início da Fase 1. `apps/api/prisma` contém apenas o spike t
 - Toda tabela tenant tem `organization_id NOT NULL`; toda relação entre dados tenant usa FK composta.
 - O `organization_id` vem do `TenantContext` resolvido no backend, nunca do corpo da requisição.
 - `forTenant(ctx)` é uma ajuda para o programador, **não uma barreira de segurança**. Cada repository aplica filtro explícito; SQL manual, views e agregações exigem o tenant como parâmetro.
-- Teste leitura, alteração e referência entre arenas em cada endpoint. Cubra também `connect`, `upsert`, operações aninhadas, transações, SQL manual, views e agregações. Respostas de recurso de outra arena são `404`; listas não incluem linhas da outra arena.
+- Teste leitura e regressão, alteração e referência entre arenas em cada endpoint. Cubra também `connect`, `upsert`, operações aninhadas, transações, SQL manual, views e agregações. Respostas de recurso de outra arena são `404`; listas não incluem linhas da outra arena.
 - Revalide membership e capacidades em cada requisição. Remover membership de uma arena não revoga a sessão global nem o acesso às outras arenas.
 - Reavalie RLS no ADR-002 após o spike de isolamento e antes do piloto se algum caminho de acesso não ficar demonstravelmente seguro.
 
@@ -50,10 +50,12 @@ O projeto está no início da Fase 1. `apps/api/prisma` contém apenas o spike t
 
 ## Fluxo de mudança
 
-1. Leia apenas os arquivos e seções ligados à tarefa. Atualize contrato, migration, service, rota e tela conforme o caso.
-2. Migrations são aditivas por padrão. Mantenha SQL manual para `tstzrange`, exclusion constraints, índices parciais, CHECKs e views; execute `pnpm db:check` após alterá-las.
-3. Teste comportamento e concorrência com PostgreSQL real quando a mudança envolver agenda, isolamento ou dinheiro. Execute `pnpm typecheck`, `pnpm build` e os testes afetados.
-4. Atualize documentação quando comportamento, contrato ou decisão mudar. Não declare uma fase concluída antes de passar pelo gate correspondente.
+1. Antes de mudar o código, construa um mapa do sistema relevante e rastreie o fluxo completo afetado: entrada e interface/API, contratos e validação, serviços e regras, persistência/migrations, eventos e jobs, configurações, dependências e consumidores. Identifique fronteiras entre pacotes, integrações internas/externas, ciclo de vida e pontos de falha. Consulte código, testes e documentação; não deduza integração apenas pelo nome de um módulo.
+2. Para funcionalidade nova, documente como ela funciona e se conecta ao sistema existente: componentes e responsabilidades, sequência dos dados, contratos, efeitos colaterais, permissões/tenant, comportamento em falhas e estratégia de recuperação. Verifique efeitos nos consumidores e fluxos existentes antes de implementar.
+3. Depois da mudança, atualize o mapa para refletir o sistema real e confirme cada ligação nos arquivos e testes correspondentes. Registre no resumo a funcionalidade, o fluxo ponta a ponta, as integrações tocadas, as fronteiras que permanecem fora do escopo e as evidências de verificação. Mantenha documentação arquitetural concisa e junto da documentação existente; crie ou atualize ADR quando houver decisão arquitetural.
+4. Leia as fontes e seções pertinentes para completar esse mapa. Atualize contrato, migration, service, rota e tela conforme o caso.
+5. Migrations são aditivas por padrão. Mantenha SQL manual para `tstzrange`, exclusion constraints, índices parciais, CHECKs e views; execute `pnpm db:check` após alterá-las.
+6. Teste comportamento e concorrência com PostgreSQL real quando a mudança envolver agenda, isolamento ou dinheiro. Execute `pnpm typecheck`, `pnpm build` e os testes afetados.
+7. Atualize documentação quando comportamento, contrato ou decisão mudar. Não declare uma fase concluída antes de passar pelo gate correspondente.
 
 Ao concluir, informe arquivos alterados, comportamento, migrations, testes, pendências e riscos conhecidos.
-

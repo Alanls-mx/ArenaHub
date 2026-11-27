@@ -33,3 +33,23 @@ model ScheduleOccupancy {
   @@map("schedule_occupancies")
 }
 
+// Infraestrutura experimental da Fase 1. FKs de identidade entram na Fase 2.
+model IdempotencyRecord {
+  id             String   @id @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  key            String   @db.Uuid
+  method         String
+  route          String
+  pathParams     Json     @map("path_params")
+  requestHash    String   @map("request_hash")
+  responseStatus Int      @map("response_status")
+  responseBody   Json     @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@unique([organizationId, userId, key])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}
+

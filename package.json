@@ -4,17 +4,27 @@
   "packageManager": "pnpm@11.25.0",
   "scripts": {
     "dev": "pnpm --parallel --filter @arenahub/api --filter @arenahub/web dev",
+    "dev:worker": "pnpm --filter @arenahub/api dev:worker",
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "test:integration": "pnpm --filter @arenahub/api test:integration",
+    "typecheck": "pnpm --filter @arenahub/contracts build && pnpm -r typecheck",
+    "test": "pnpm --filter @arenahub/contracts build && pnpm --filter @arenahub/api test",
+    "test:integration": "pnpm --filter @arenahub/contracts build && pnpm --filter @arenahub/api test:integration",
     "db:check": "pnpm --filter @arenahub/api db:check",
     "db:migrate": "pnpm --filter @arenahub/api db:migrate",
-    "lint": "pnpm -r lint"
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@testcontainers/postgresql": "^12.2.2",
     "@types/node": "^26.6.10",
-    "typescript": "^7.0.2",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.6",
+    "eslint-plugin-import": "2.32.0",
+    "prettier": "3.10.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "8.74.0",
     "vitest": "^5.1.2"
   }
 }

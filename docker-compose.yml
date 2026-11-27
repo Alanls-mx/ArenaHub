@@ -1,24 +1,23 @@
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16@sha256:07abc3f43c9395b0bdbbab36bc25ddb0e8d83cd4fcafb5fb7d6abe14ff156dd8
     environment:
       POSTGRES_USER: arenahub
       POSTGRES_PASSWORD: arenahub
       POSTGRES_DB: arenahub
     ports:
-      - "5432:5432"
+      - '127.0.0.1:5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arenahub -d arenahub"]
+      test: ['CMD-SHELL', 'pg_isready -U arenahub -d arenahub']
       interval: 5s
       timeout: 3s
       retries: 10
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.22.3
     ports:
-      - "8025:8025"
-      - "1025:1025"
+      - '127.0.0.1:8025:8025'
+      - '127.0.0.1:1025:1025'
 volumes:
   postgres_data:
-
