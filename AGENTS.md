@@ -50,9 +50,12 @@ O projeto está na Fase 1. `apps/api/prisma` contém provas técnicas no schema 
 
 ## Fluxo de mudança
 
-1. Leia apenas os arquivos e seções ligados à tarefa. Atualize contrato, migration, service, rota e tela conforme o caso.
-2. Migrations são aditivas por padrão. Mantenha SQL manual para `tstzrange`, exclusion constraints, índices parciais, CHECKs e views; execute `pnpm db:check` após alterá-las.
-3. Teste comportamento e concorrência com PostgreSQL real quando a mudança envolver agenda, isolamento ou dinheiro. Execute `pnpm typecheck`, `pnpm build` e os testes afetados.
-4. Atualize documentação quando comportamento, contrato ou decisão mudar. Não declare uma fase concluída antes de passar pelo gate correspondente.
+1. Antes de mudar o código, construa um mapa do sistema relevante e rastreie o fluxo completo afetado: entrada e interface/API, contratos e validação, serviços e regras, persistência/migrations, eventos e jobs, configurações, dependências e consumidores. Identifique fronteiras entre pacotes, integrações internas/externas, ciclo de vida e pontos de falha. Consulte código, testes e documentação; não deduza integração apenas pelo nome de um módulo.
+2. Para funcionalidade nova, documente como ela funciona e se conecta ao sistema existente: componentes e responsabilidades, sequência dos dados, contratos, efeitos colaterais, permissões/tenant, comportamento em falhas e estratégia de recuperação. Verifique efeitos nos consumidores e fluxos existentes antes de implementar.
+3. Depois da mudança, atualize o mapa para refletir o sistema real e confirme cada ligação nos arquivos e testes correspondentes. Registre no resumo a funcionalidade, o fluxo ponta a ponta, as integrações tocadas, as fronteiras que permanecem fora do escopo e as evidências de verificação. Mantenha documentação arquitetural concisa e junto da documentação existente; crie ou atualize ADR quando houver decisão arquitetural.
+4. Leia as fontes e seções pertinentes para completar esse mapa. Atualize contrato, migration, service, rota e tela conforme o caso.
+5. Migrations são aditivas por padrão. Mantenha SQL manual para `tstzrange`, exclusion constraints, índices parciais, CHECKs e views; execute `pnpm db:check` após alterá-las.
+6. Teste comportamento e concorrência com PostgreSQL real quando a mudança envolver agenda, isolamento ou dinheiro. Execute `pnpm typecheck`, `pnpm build` e os testes afetados.
+7. Atualize documentação quando comportamento, contrato ou decisão mudar. Não declare uma fase concluída antes de passar pelo gate correspondente.
 
 Ao concluir, informe arquivos alterados, comportamento, migrations, testes, pendências e riscos conhecidos.
