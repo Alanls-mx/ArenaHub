@@ -46,7 +46,7 @@ O experimento `rls.integration.test.ts` criou papéis separados de migração, o
 
 RLS com GUC customizada **não autentica** o usuário: código com SQL arbitrário pode definir outro `organization_id`. A API deve derivar o contexto de membership revalidada e manter repositories e FKs. O superusuário de migração bypassa RLS; não deve ser usado pela aplicação. Workers globais precisam de papel e funções explicitamente autorizados, nunca de bypass implícito. O spike tem duas organizações e poucas linhas: não produz estimativa confiável de latência ou custo de planejamento. Antes de ativar RLS em produção, medir planos e volume representativos, com índices por `organization_id`.
 
-**Recomendação:** preparar RLS como defesa adicional nas migrations tenant da Fase 2, sob papel de aplicação sem bypass e contexto transacional obrigatório, após o modelo de identidade existir. A adoção deve ser explícita e passar pela mesma matriz de regressão; o spike não introduz RLS no schema definitivo. O gate comercial e o CI remoto continuam abertos.
+**Recomendação:** preparar RLS como defesa adicional nas migrations tenant da Fase 2, sob papel de aplicação sem bypass e contexto transacional obrigatório, após o modelo de identidade existir. A adoção deve ser explícita e passar pela mesma matriz de regressão; o spike não introduz RLS no schema definitivo. Na data deste ADR, CI e validação comercial estavam pendentes. A situação atual da estratégia comercial foi alterada por [ADR-009](ADR-009-founder-led-development.md); entrevistas foram adiadas e não bloqueiam desenvolvimento.
 
 ## Condições de adoção na Fase 2
 
@@ -58,3 +58,9 @@ RLS com GUC customizada **não autentica** o usuário: código com SQL arbitrár
 ## Reprodução
 
 Na raiz, executar `pnpm test:integration`. O runner cria PostgreSQL descartável, aplica as migrations do spike e roda `tenant.integration.test.ts` e `rls.integration.test.ts` junto com as demais verificações. O teste RLS cria e remove papéis e schema próprios nesse banco, sem aplicar política RLS ao schema de desenvolvimento ou produção.
+
+## Aplicação na identidade — 27/11/2026
+
+As rotas organizacionais de identidade derivam o tenant de sessão e membership ativa no escopo de uma transação. A implementação atual em arena_identity usa filtros explícitos e FKs compostas. A matriz HTTP e os testes em duas arenas sustentam essa escolha para a Fase 2 local. RLS segue como defesa adicional a avaliar antes do piloto com papéis de aplicação e worker e volume representativo. Evidências de endpoint e limites desta rodada estão no [gate da Fase 2](../PHASE2_GATE.md).
+
+Na auditoria direcionada, o host ativo passou a vincular adicionalmente a requisição a uma arena. Host desconhecido, domínio pendente/suspenso e slug de outra arena retornam 404. Chamadas diretas não confiam em `X-Forwarded-Host`; apenas o proxy interno e peer IP configurados podem fornecer o host público. A suíte de integração cobre esses caminhos e SQL direto para o último Owner com papel sem superusuário. Para os endpoints atuais, filtros explícitos, membership revalidada, FKs e provas negativas são suficientes para o gate local. RLS não foi habilitada; reabrir a decisão antes do piloto ao introduzir novos repositories, jobs tenant ou consultas SQL sem escopo comprovável, além de medir planos sob carga representativa.

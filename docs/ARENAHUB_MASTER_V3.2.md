@@ -12,7 +12,7 @@ Diretriz central: engenharia sólida onde erros são caros (agenda, isolamento e
 
 | Área | Incluído no MVP |
 | --- | --- |
-| Identidade | Login da equipe, sessões revogáveis, papéis Proprietário / Administrador / Funcionário, matriz de permissões no backend |
+| Identidade | Login da equipe, sessões revogáveis, ownership múltiplo e cargos personalizados, matriz de permissões no backend |
 | Estrutura | Espaços (venues), unidades físicas, espaços divisíveis, modalidades, horários de funcionamento (inclusive após meia-noite), preços, bloqueios |
 | Agenda | Visão diária e semanal, reservas avulsas, edição, remarcação, cancelamento, recorrências (mensalistas), exceções, histórico |
 | Clientes | Cadastro, telefone E.164, observações, histórico, situação financeira |
@@ -24,7 +24,7 @@ Diretriz central: engenharia sólida onde erros são caros (agenda, isolamento e
 
 ### 1.2. Fora do MVP
 
-App mobile, página pública de reservas, holds, outbox, SSE/WebSocket, push, Redis, API oficial do WhatsApp, Pix e gateways, conciliação, módulos Bar / Media / Events / Business, relatórios avançados, microserviços. RLS é uma decisão de segurança reavaliada antes do piloto (§4.1), não uma funcionalidade comercial.
+App mobile, página pública de reservas, holds, outbox, SSE/WebSocket, push, Redis, API oficial do WhatsApp, gateways adicionais, módulos Bar / Media / Events / Business, relatórios avançados, microserviços. RLS é uma decisão de segurança reavaliada antes do piloto (§4.1), não uma funcionalidade comercial.
 
 Cada item fora do MVP só entra com um consumidor real ou demanda comprovada no piloto.
 
@@ -65,6 +65,18 @@ Cada item fora do MVP só entra com um consumidor real ou demanda comprovada no 
 - Funcionário não vê pendências globais nem decide taxa de no-show.
 - Substituição de cobrança, cliente das alocações, unicidade de exceções, versões de recorrência e concorrência de preços e unidades recebem garantias definidas.
 - Convites, configurações de comunicação e `payment_balances` passam a ter contratos de dados e tarefas próprias.
+
+### 1.6. Estratégia de desenvolvimento — decisão do fundador (27/11/2026)
+
+- O desenvolvimento seguirá inicialmente a visão do fundador, as funcionalidades planejadas e as regras documentadas. Entrevistas comerciais foram adiadas até que exista uma solução funcional e madura para demonstração; não são gate de entrada da Fase 2.
+- Nenhuma pesquisa ou evidência de cliente é presumida. Regras operacionais e financeiras sem validação permanecem hipóteses de produto; novas evidências poderão motivar evolução e migrations aditivas.
+- A Fase 1 está **concluída — fundação técnica aprovada**. O gate técnico não aprova automaticamente todas as regras comerciais nem o modelo definitivo de produção.
+- `docs/DATABASE.md` e `docs/ERD.md` são candidatos de modelagem para aprovação explícita do fundador. Não criar migrations definitivas de domínio antes dessa aprovação.
+- O registro completo, riscos assumidos e efeitos no roadmap estão em [ADR-009](decisions/ADR-009-founder-led-development.md); a [Fase 2](PHASE2_PROPOSAL.md) foi autorizada na missão seguinte.
+
+### 1.7. Decisões aprovadas para implementação
+
+A [matriz oficial das doze decisões](decisions/ADR-010-product-and-access.md) rege as fases 2–6. O [ADR-011](decisions/ADR-011-organization-domains.md) define a fundação de domínios por organização. A [matriz HTTP implementada](PHASE2_ACCESS.md) especifica os controles da identidade. As matrizes de papéis dos fluxos futuros descrevem templates iniciais ajustáveis.
 
 ## 2. Arquitetura, stack e monorepo
 
@@ -286,7 +298,7 @@ Toda requisição autenticada resolve um `TenantContext` (usuário, organizaçã
 
 ### 4.4. Matriz de capacidades
 
-Papéis são conjuntos fixos de capacidades no código (`packages/contracts/src/permissions.ts`). Cada rota declara a capacidade exigida.
+Cargos são definidos pela organização, com união das capacidades do catálogo controlado pelo backend. Ownership é separado dos cargos.
 
 | Capacidade | Proprietário | Administrador | Funcionário |
 | --- | --- | --- | --- |
@@ -305,10 +317,10 @@ Papéis são conjuntos fixos de capacidades no código (`packages/contracts/src/
 | Anular cobrança | Sim | Sim | Não |
 | Ver dashboard e relatórios financeiros | Sim | Sim | Não |
 | Configurar venues, unidades, horários e preços | Sim | Sim | Não |
-| Gerenciar membros e papéis | Sim | Não | Não |
+| Gerenciar membros e cargos | Sim | Conforme capacidades do cargo | Não por padrão |
 | Configurações da organização e políticas | Sim | Não | Não |
 
-A linha do Funcionário em cancelamento deve ser confirmada nas entrevistas. O dashboard do Funcionário omite valores financeiros agregados; ele só vê cobranças em aberto do cliente atendido ao registrar pagamento, sem acesso à listagem global de pendências, pagamentos ou relatórios. Ao marcar no-show, o backend aplica a política configurada; só Admin+ pode alterar ou dispensar a taxa, com motivo em audit log. Mudar a matriz é trocar uma constante, não uma migration.
+A regra planejada permite ao Funcionário cancelar apenas reserva criada por ele no mesmo dia, antes do início; até aprovação do fundador, trate esse recorte como hipótese de produto. O dashboard do Funcionário omite valores financeiros agregados; ele só vê cobranças em aberto do cliente atendido ao registrar pagamento, sem acesso à listagem global de pendências, pagamentos ou relatórios. Ao marcar no-show, o backend aplica a política configurada; só Admin+ pode alterar ou dispensar a taxa, com motivo em audit log. Mudanças de capacidade são política de autorização e, em princípio, não exigem migration.
 
 ### 4.5. Cliente final (adiado)
 
@@ -324,7 +336,7 @@ O cliente final só ganha login com a página pública ou o app. A decisão entr
 
 ## 5. Modelo de dados do MVP
 
-O MVP tem 29 tabelas de domínio em 5 grupos, mais `organization_themes` e as tabelas da fila de jobs. Esta seção é o rascunho do `docs/DATABASE.md`; os tipos finais saem do spike da Fase 1 e das entrevistas. Toda tabela tenant, inclusive tabelas de ligação e histórico, tem `organization_id NOT NULL`; tabelas com `id uuid PK` também têm `UNIQUE (organization_id, id)`. Relações tenant usam FKs compostas. Toda tabela tem `created_at` e, quando editável, `updated_at` e `version`.
+O modelo agrupa entidades por domínio, além de `organization_themes` e as tabelas da fila de jobs. `docs/DATABASE.md` e `docs/ERD.md` registram o modelo candidato para aprovação do fundador. Os tipos usam a prova técnica da Fase 1 e as premissas de produto explicitadas; feedback comercial posterior pode gerar evolução aditiva. Toda tabela tenant, inclusive tabelas de ligação e histórico, tem `organization_id NOT NULL`; tabelas com `id uuid PK` também têm `UNIQUE (organization_id, id)`. Relações tenant usam FKs compostas. Toda tabela tem `created_at` e, quando editável, `updated_at` e `version`.
 
 ### 5.1. Identidade e organização
 
@@ -334,12 +346,12 @@ O MVP tem 29 tabelas de domínio em 5 grupos, mais `organization_themes` e as ta
 | `sessions` | user\_id, token\_hash, client (`WEB`/`MOBILE`), expires\_at, absolute\_expires\_at, last\_seen\_at, revoked\_at, ip, user\_agent | `UNIQUE (token_hash)`, índice `(user_id)` |
 | `password_reset_tokens` | user\_id, token\_hash, expires\_at, used\_at | `UNIQUE (token_hash)` |
 | `organizations` | slug, name, timezone, status, políticas (ver abaixo) | `UNIQUE (slug)`, CHECK timezone não vazio |
-| `memberships` | organization\_id, user\_id, role (`OWNER`/`ADMIN`/`STAFF`), status (`ACTIVE`/`DISABLED`) | `UNIQUE (organization_id, user_id)` |
+| `memberships` | organization_id, user_id, is_owner, status | Chave composta por organização e usuário; cargos relacionados por membership_roles |
 | `membership_invites` | email (citext), role, token\_hash, expires\_at, accepted\_at, revoked\_at, invited\_by | `UNIQUE (token_hash)`; no máximo um convite não aceito/não revogado por `(organization_id, email)` |
 | `audit_logs` | organization\_id (nulo em eventos globais), actor\_user\_id, action, entity\_type, entity\_id, metadata jsonb, ip | índice `(organization_id, created_at DESC)` |
 | `idempotency_keys` | organization\_id, user\_id, key, method, route, request\_hash, response\_status, response\_body jsonb, expires\_at | `UNIQUE (organization_id, user_id, key)` |
 
-**Políticas na organização** (colunas explícitas, não JSON): `default_slot_minutes` (60), `min_lead_minutes`, `free_cancellation_hours`, `late_cancellation_fee_cents`, `no_show_fee_cents`, `charge_on_reservation` (`ON_CREATE`/`ON_CONFIRM`/`MANUAL`), `monthly_billing_day` (1–28). **Comunicação manual:** `pix_key_text` (nulo quando não configurada), `whatsapp_confirmation_template`, `whatsapp_reminder_template`, `whatsapp_collection_template` (textos com variáveis permitidas e tamanho máximo). Só Proprietário edita; o backend valida placeholders, e a Web codifica a mensagem ao montar `wa.me`. A chave Pix é texto para copiar, sem geração de QR ou confirmação automática de pagamento.
+A organização define grade (padrão 15 min), duração (padrão 60 min), antecedência, dia de cobrança e modelos de comunicação. Cancelamento segue política versionada da plataforma vinculada à reserva.
 
 Convite: Proprietário cria token aleatório de uso único, com hash no banco e validade de 7 dias. Reenviar revoga o convite anterior na mesma transação. Aceitar consome o token, verifica e-mail, cria usuário ou vincula o usuário existente e ativa a membership em uma transação. A busca usa o hash, nunca registra o token em logs; convite expirado ou revogado não concede acesso. A membership é revalidada em toda requisição (§4.3).
 
@@ -533,7 +545,7 @@ No MVP, `PENDING` significa "anotado, aguardando confirmação do cliente" e ocu
 | criar → `PENDING` ou `CONFIRMED` | Todos | Cria ocupações ativas | Cria cobrança se `charge_on_reservation = ON_CREATE` |
 | `PENDING` → `CONFIRMED` | Todos | Mantém | Cria cobrança se `ON_CONFIRM` |
 | `PENDING`/`CONFIRMED` → `CANCELLED` | Ver matriz §4.4 | Desativa | Ver §6.4 |
-| `CONFIRMED` → `NO_SHOW` | Todos, só após `start_at` | Mantém (histórico) | Backend aplica `no_show_fee_cents` da organização; só Admin+ pode dispensar/alterar com motivo |
+| `CONFIRMED` → `NO_SHOW` | Todos, só após `start_at` | Mantém (histórico) | Política da plataforma vigente na reserva define efeitos; regras pendentes |
 | `CONFIRMED` → `COMPLETED` | Derivado: `end_at < now()` | Mantém | Nenhum |
 
 Qualquer transição fora da tabela devolve `409 INVALID_TRANSITION`. A máquina de estados fica em uma função pura em `packages/contracts` (usada pela Web para esconder botões e pela API para validar).
@@ -565,10 +577,10 @@ Qualquer transição fora da tabela devolve `409 INVALID_TRANSITION`. A máquina
 ### 6.4. Remarcação, cancelamento e no-show
 
 - **Remarcação:** usa `version` para concorrência otimista. O preço é recalculado e, se mudar, a interface mostra o novo valor antes de confirmar; a partir da Fase 5, a cobrança em aberto é ajustada (anula a antiga e cria substituta com `replaces_charge_id`, nunca edita valor). Se houver alocação, a operação exige confirmação explícita do destino do crédito.
-- **Cancelamento dentro do prazo gratuito** (`free_cancellation_hours`): anula a cobrança da reserva. Se já havia pagamento alocado, a alocação é revertida e o valor vira crédito do cliente (§7.4); o admin pode optar por registrar devolução.
-- **Cancelamento tardio:** anula a cobrança original e cria `CANCELLATION_FEE` com `late_cancellation_fee_cents` (pode ser zero = sem taxa). Admin pode dispensar com motivo (audit log).
-- **No-show:** mantém a cobrança original. Se `no_show_fee_cents > 0`, cria `NO_SHOW_FEE` automaticamente; Admin+ pode dispensar ou alterar o valor com motivo, Funcionário apenas marca a ausência.
-- Cancelar ocorrência de mensalista com `billing_mode = MONTHLY` não mexe na mensalidade; registra `recurrence_exceptions` `SKIPPED`.
+- **Cancelamento:** conservar versão da política aplicada. Prazo gratuito, retenções, multas, devoluções e exceções dependem da decisão do fundador.
+- **Cancelamento tardio:** aplicar a versão registrada na reserva. Regras financeiras aguardam definição do fundador.
+- **No-show:** registrar o evento. Multas, dispensas e exceções aguardam definição da política.
+- Cancelar ocorrência gera exceção na agenda. O efeito sobre a mensalidade aguarda a definição da política central.
 
 ### 6.5. Recorrências (mensalistas)
 
@@ -607,9 +619,9 @@ Preço é por hora (`price_per_hour_cents`). O valor da reserva é a soma dos tr
 - Uma consulta por dia e venue, usando o índice GiST `(organization_id, period)`. A visão semanal faz uma consulta para a semana inteira, não sete.
 - Disponibilidade é informativa; só a constraint garante.
 
-### 6.8. Regras operacionais a validar nas entrevistas
+### 6.8. Hipóteses operacionais de produto — validação comercial posterior
 
-Granularidade (30 ou 60 min), duração mínima e máxima, intervalo entre reservas, antecedência, funcionamento após meia-noite, feriados, prazo de cancelamento, taxa de no-show, se o Funcionário pode cancelar. As regras técnicas já têm campo configurável; a entrevista define os padrões comerciais.
+A grade padrão é de 15 min e a duração padrão da reserva é de 60 min. Manter fuso IANA, funcionamento após meia-noite e exceções de calendário. Políticas de cancelamento são centralizadas e versionadas.
 
 ## 7. Financeiro
 
@@ -657,7 +669,7 @@ Crédito é a soma dos saldos livres dos pagamentos não estornados do cliente, 
 | `MONTHLY` | Uma cobrança `MONTHLY` ativa por contrato e mês completo, valor da versão vigente no primeiro dia, vencimento no `monthly_billing_day` | Diário às 04:00 local: cria somente se **não existe nenhuma** cobrança mensal daquele contrato/mês, inclusive anulada; o índice único parcial evita duas ativas em concorrência |
 | `PER_OCCURRENCE` | Uma cobrança `RESERVATION` por ocorrência, como reserva avulsa | Nenhum além da geração de ocorrências |
 
-Se o contrato começa no meio do mês, não há cobrança mensal automática para esse mês: o dashboard cria pendência de **acerto de mês parcial**, resolvida por cobrança manual com valor aprovado pelo admin. Se termina no meio de um mês já cobrado, o encerramento exige decisão explícita do admin: manter a cobrança ou anular, liberar crédito e criar cobrança manual pelo valor acordado. A alteração de valor mensal no meio do mês também é recusada. Feriado ou ocorrência cancelada pela arena em mensalidade fixa: o admin decide entre manter o valor ou anular e recriar com desconto. A política padrão sai das entrevistas e vira coluna da organização se for uniforme.
+A primeira competência parcial é calculada automaticamente. A base por ocorrências, arredondamento, vigência e feriados aguardam aprovação. A inadimplência gera alerta e preserva a ocupação.
 
 ### 7.6. Relatórios do MVP
 
@@ -670,11 +682,11 @@ Todos calculados por SQL agregado no banco, com filtro de período no fuso da or
 
 ### 7.7. Futuro
 
-Pix integrado, gateway, webhooks, conciliação e estornos automáticos entram depois do piloto. O modelo já suporta: `payments.external_ref` para o id do provedor e `Idempotency-Key` para reprocessamento seguro de webhooks.
+Pix com confirmação automática via Mercado Pago integra a Fase 5 antes do lançamento comercial. Ver [proposta financeira](MERCADO_PAGO.md).
 
 ## 8. Contratos da API do MVP
 
-O MVP tem cerca de 60 endpoints, todos sob `/api/v1`. Rotas de organização usam `/api/v1/orgs/:org/...`; a coluna "Cap." indica a capacidade exigida (O = Proprietário, A = Administrador, S = Funcionário). `Idem.` marca `Idempotency-Key` obrigatório.
+O MVP tem cerca de 60 endpoints previstos, todos sob `/api/v1`. Rotas de organização usam `/api/v1/orgs/:org/...`; a coluna "Cap." indica a capacidade exigida (O = Proprietário, A = Administrador, S = Funcionário). `Idem.` marca `Idempotency-Key` obrigatório.
 
 ### 8.1. Identidade e organização
 
@@ -688,13 +700,8 @@ O MVP tem cerca de 60 endpoints, todos sob `/api/v1`. Rotas de organização usa
 | `POST /auth/password/change` | autenticado | Revoga outras sessões |
 | `POST /auth/invites/accept` | token de convite | Consome token de uso único, verifica e-mail e ativa membership |
 | `GET /auth/sessions` · `DELETE /auth/sessions/:id` | autenticado | Gerenciar dispositivos |
-| `GET /orgs/:org/context` | todos os membros | ID, nome, slug, fuso e tema público do painel; sem políticas financeiras |
-| `GET /orgs/:org` · `PATCH /orgs/:org` | O | Dados completos, fuso, políticas |
-| `GET /orgs/:org/members` | O, A |  |
-| `POST /orgs/:org/members` | O | Cria ou reenvia convite por e-mail; revoga token anterior |
-| `PATCH /orgs/:org/members/:id` · `DELETE` | O | Papel, desativar |
-| `GET /orgs/:org/invites` · `DELETE /:id` | O | Convites pendentes e revogação |
-| `GET /orgs/:org/audit-logs` | O | Paginado |
+
+As rotas organizacionais vigentes, seus campos e limites de delegação estão na [matriz HTTP da Fase 2](PHASE2_ACCESS.md).
 
 Criação de organização no MVP é feita por script administrativo (`pnpm org:create`), não por endpoint público.
 
@@ -772,7 +779,7 @@ Criação de organização no MVP é feita por script administrativo (`pnpm org:
 
 Mais um bloco de alertas: exceções de recorrência não resolvidas.
 
-Funcionário vê agenda e confirmações; os indicadores 3 e 4 e os totais financeiros dos alertas são omitidos. Proprietário e Administrador veem os quatro. O bloco de alertas financeiros inclui acertos de mês parcial pendentes.
+Funcionário vê agenda e confirmações; os indicadores 3 e 4 e os totais financeiros dos alertas são omitidos. Proprietário e Administrador veem os quatro. O bloco de alertas financeiros inclui alertas de inadimplência.
 
 ### 8.7. Geração e consumo
 
@@ -973,7 +980,7 @@ Ordem dentro de cada funcionalidade: contrato Zod → migration → service + te
 
 ### Fase 0 — Fundação (1,5 semana)
 
-**Objetivo:** repositório pronto para receber código de domínio com qualidade automática, design system base e material para as entrevistas.
+**Objetivo:** repositório pronto para receber código de domínio com qualidade automática e design system base. Protótipos e pesquisa comercial podem apoiar validação posterior.
 
 - [ ] Monorepo pnpm com `apps/api`, `apps/web`, `packages/contracts`; TypeScript strict e `tsconfig` base
 - [ ] ESLint, Prettier, regras de import entre módulos (`eslint-plugin-boundaries`)
@@ -987,41 +994,39 @@ Ordem dentro de cada funcionalidade: contrato Zod → migration → service + te
 - [ ] `AGENTS.md`, `docs/AI_CONTEXT.md`, `ARCHITECTURE.md`, `ENGINEERING_STANDARDS.md`, `docs/design/*`
 - [ ] ADR-001 (stack), ADR-005 (domínios e cookies), ADR-007 (temas)
 - [ ] Estimativa de custo mensal de infraestrutura (§13)
-- [ ] Protótipo navegável estático da agenda com dados fictícios e o tema padrão, para as entrevistas
-- [ ] Agendar 3 a 5 entrevistas com donos de arena e realizar as primeiras conversas (§14)
+- [ ] Protótipo navegável estático da agenda com dados fictícios e tema padrão, para demonstração/validação posterior
+- [ ] Entrevistas com 3 a 5 proprietários: **adiadas por decisão do fundador; não são gate de Fase 0, Fase 1 ou início do desenvolvimento** (§14; ADR-009)
 
-**Gate:** `pnpm dev` sobe tudo; CI verde; preview de tema funcionando; protótipo pronto e entrevistas agendadas. As 3 a 5 entrevistas e a síntese fecham até o fim da Fase 1 (semana 3).
+**Gate:** `pnpm dev` sobe tudo; CI verde; preview de tema funcionando. Protótipo é preparação de demonstração. Não há requisito de agendar/concluir entrevistas para passar gate técnico.
 
-### Fase 1 — Banco e prova técnica (1,5 semana)
+### Fase 1 — Banco e prova técnica (concluída em 27/11/2026)
 
 **Objetivo:** provar que a integridade da agenda funciona com a stack escolhida antes de construir sobre ela.
 
-- [ ] Spike isolado: tabelas mínimas de unidade e ocupação sem FKs de reserva/bloqueio; coluna gerada `tstzrange`, exclusion constraint, duas migrations seguidas, `prisma migrate dev` sem drift. A migration final de domínio entra na Fase 4.
-- [ ] Teste de concorrência: duas conexões, mesma unidade, mesmo intervalo → exatamente uma vence
-- [ ] Decisão registrada em ADR-004 (Prisma + SQL manual, ou plano B)
-- [ ] Infra de testes de integração com Testcontainers e banco limpo por teste (transação revertida ou schema por worker)
-- [ ] `shared/time`: conversão local ↔ UTC, dia operacional, testes com São Paulo e Manaus
-- [ ] `shared/money`: tipos e formatação
-- [ ] Infra de idempotência (tabela, middleware, testes)
-- [ ] Fila em PostgreSQL escolhida (ADR-006), processo `worker` rodando um job de exemplo
-- [ ] Spike de `forTenant(ctx)` com testes de `connect`, `upsert`, operações aninhadas, transações, SQL manual, views e agregações; registrar limites no ADR-002
-- [ ] Concluir 3 a 5 entrevistas e síntese até a semana 3; revisar ERD e `docs/DATABASE.md` com as respostas
+- [x] Spike isolado: tabelas mínimas de unidade e ocupação sem FKs de reserva/bloqueio; coluna gerada `tstzrange`, exclusion constraint, migrations e Prisma sem drift. A migration final de domínio entra na Fase 4.
+- [x] Teste de concorrência: duas conexões, mesma unidade, mesmo intervalo → exatamente uma vence
+- [x] Decisão registrada em ADR-004 (Prisma + SQL manual)
+- [x] Infra de testes de integração com Testcontainers e banco descartável
+- [x] `shared/time`: conversão local ↔ UTC, dia operacional, testes com São Paulo e Manaus
+- [x] `shared/money`: tipos, precisão e formatação
+- [x] Infra de idempotência (tabela, middleware, testes)
+- [x] Fila em PostgreSQL escolhida (ADR-006), worker real e recuperação testada
+- [x] Spike de `forTenant(ctx)` com `connect`, `upsert`, operações aninhadas, transações, SQL manual, views e agregações; limites registrados no ADR-002
+- [x] Gates e CI aprovados; candidato `docs/DATABASE.md`/`docs/ERD.md` preparado; hipóteses e decisões de modelo encaminhadas à aprovação do fundador
 
-**Gate:** teste de concorrência verde no CI; ADR-003 e ADR-004 aprovados; limites de `forTenant` documentados no ADR-002; `DATABASE.md` congelado para o MVP após entrevistas.
+**Gate técnico (concluído em 27/11/2026):** teste de concorrência e workflow CI verdes; ADR-003/004 aprovados; limites de `forTenant` registrados no ADR-002; testes locais e CI aprovados. Entrevistas não são requisito. O schema candidato só fica aprovado após decisão explícita do fundador; aprovação técnica da Fase 1 não congela modelo de produção.
 
-### Fase 2 — Identidade e multi-tenancy (1,5 semana)
+### Fase 2 — Identidade e acesso
 
-- [ ] Migrations: `users`, `sessions`, `password_reset_tokens`, `organizations`, `memberships`, `membership_invites`, `audit_logs`, `organization_themes`
-- [ ] Login, logout, sessão por cookie com hash do token, CSRF, rate limit
-- [ ] Recuperação e troca de senha; provedor de e-mail transacional
-- [ ] `TenantContext`, resolução por `orgSlug`, matriz de capacidades em `contracts`
-- [ ] Gestão de membros e convites com token de uso único, expiração, reenvio e aceitação transacional; remover membership preserva sessão e outras arenas
-- [ ] Script `pnpm org:create` e seed de desenvolvimento com 2 organizações
-- [ ] Tema por organização aplicado no layout; scripts `theme:check` e `theme:publish`
-- [ ] Telas: login, recuperar senha, seletor de arena, membros, configurações da organização
-- [ ] Suíte de isolamento: endpoints, operações aninhadas, `connect`, `upsert`, SQL manual, transações, views e agregações; outra org recebe `404` ou conjunto vazio
+**Aprovada localmente em 27/11/2026.** A [matriz HTTP](PHASE2_ACCESS.md) especifica a autorização das rotas e o [gate da fase](PHASE2_GATE.md) registra as verificações e o estado do CI.
 
-**Gate:** isolamento coberto em 100% dos endpoints existentes; sessões aptas a cookie e bearer (sem fluxo mobile ainda).
+- [x] Identidade global, sessões, usuários em múltiplas organizações, convites, cargos por organização e auditoria.
+- [x] Propriedade múltipla protegida no backend e no PostgreSQL. Capacidades atuais são revalidadas por requisição.
+- [x] Login, logout, troca e recuperação de senha por SMTP, cookies, CSRF e limite de tentativas.
+- [x] Provisionamento controlado por `org:create` e seed de duas organizações.
+- [x] Configuração da arena, tema por organização e comandos `theme:check` e `theme:publish`.
+- [x] Interface para conta, arenas, membros, convites, Owners e edição de cargos. Testes de isolamento, concorrência e três tamanhos de tela.
+- [ ] Selecionar e homologar SMTP de produção para o piloto.
 
 ### Fase 3 — Estrutura da arena (2 semanas)
 
@@ -1061,7 +1066,8 @@ Ordem dentro de cada funcionalidade: contrato Zod → migration → service + te
 - [ ] Pagamentos com alocação automática (mais antigas primeiro) e manual
 - [ ] Anulação, substituição de cobrança, estorno, devolução parcial/integral, reversão de alocação com motivo e audit log
 - [ ] Regras financeiras de cancelamento e no-show (§6.4)
-- [ ] Job `billing.monthly` por contrato estável, sem recriar cobrança anulada; cobrança por ocorrência e alerta de acerto de mês parcial
+- [ ] Mercado Pago por arena: Pix, webhooks verificados, idempotência, expiração, reembolso e conciliação antes do lançamento comercial
+- [ ] Job `billing.monthly` por contrato estável, sem recriar cobrança anulada; cobrança por ocorrência e primeira competência proporcional automática
 - [ ] Pendências agrupadas por cliente com mensagem `wa.me`
 - [ ] Mensagens prontas `wa.me`: confirmação de reserva, lembrete, cobrança (modelos editáveis por organização) e chave Pix textual
 - [ ] Relatórios do §7.6
@@ -1125,7 +1131,7 @@ Só começa se o piloto mostrar demanda por uso no celular além do painel respo
 
 ### Fase 9 — Expansão por demanda
 
-Ordem definida pelo backlog do piloto. Candidatos: página pública com holds, login do cliente final, Pix integrado, ArenaHub Bar, Media, Events, Business, relatórios avançados, SSE.
+Ordem definida pelo backlog do piloto. Candidatos: página pública com holds, login do cliente final, ArenaHub Bar, Media, Events, Business, relatórios avançados, SSE.
 
 ### 11.3. Definição de pronto (toda tarefa)
 
@@ -1166,7 +1172,7 @@ O esforço de teste segue o risco: agenda, isolamento e financeiro têm testes d
 - **Idempotência:** mesma chave devolve a mesma resposta; corpo ou rota diferente devolve 409; duas requisições simultâneas executam uma vez; timeout simulado não duplica.
 - **Tempo:** fechamento após meia-noite, dois turnos no dia e dia inteiro; recorrência atravessando virada de mês e ano; `America/Manaus`; hora inexistente e ambígua com tzdata fixa.
 - **Preço:** tabela de casos com trechos que cruzam duas regras, meia-noite, vigência, regra de data específica, preço de mensalista, regra manual e arredondamento único.
-- **Mensalistas:** mudança de versão com ocorrência paga é recusada sem resolução; contrato não recebe duas cobranças no mesmo mês; mês parcial gera alerta e acerto manual.
+- **Mensalistas:** mudança de versão com ocorrência paga é recusada sem resolução; contrato não recebe duas cobranças no mesmo mês; primeiro mês parcial gera cobrança proporcional automática.
 - **Estados:** toda transição inválida devolve `INVALID_TRANSITION`.
 - **Migrations:** banco vazio → todas as migrations → `prisma migrate diff` sem diferença (`pnpm db:check`).
 - **Temas:** todo tema em `themes/` passa no `theme:check`.
@@ -1274,15 +1280,15 @@ Não sou advogado; esses itens são o ponto de partida para a revisão jurídica
 
 ## 14. Trilha comercial e entrevistas
 
-A trilha comercial corre em paralelo e tem dois marcos: entrevistas concluídas até a semana 3 (alimentam o modelo de dados) e uma arena piloto com contrato assinado até a semana 13. A meta de R$ 1.500 em 7 dias segue separada, via serviços express da LumixEngine.
+A trilha comercial é paralela ao desenvolvimento. Por decisão do fundador (ADR-009), entrevistas ficam adiadas até o produto ser funcional e maduro para apresentação; não há prazo fixo antes da Fase 2 ou do desenvolvimento das funcionalidades principais. Validação posterior alimentará a evolução do MVP e a preparação do piloto. A meta de R$ 1.500 em 7 dias segue separada, via serviços express da LumixEngine.
 
 ### 14.1. Etapas
 
 | Semana | Ação | Resultado esperado |
 | --- | --- | --- |
-| 0–1 | Lista de 15 a 20 arenas em Cruzeiro e cidades próximas (nome, dono, contato, modalidades, como reservam hoje) | Lista priorizada |
-| 1–3 | 3 a 5 entrevistas presenciais de 30 a 45 min, com o protótipo da agenda | Respostas em `docs/discovery/` |
-| 3 | Síntese: padrões, regras padrão, prioridades (`design:research-synthesis`) | Ajustes no `DATABASE.md` e nas políticas |
+| Quando a demonstração estiver madura | Identificar participantes e pedir consentimento para pesquisa | Amostra adequada; nenhum contato/entrevista presumido |
+| Após solução funcional | Realizar 3 a 5 entrevistas presenciais de 30 a 45 min, com roteiro/protótipo | Evidências em `docs/discovery/`, sem registrar dados pessoais desnecessários |
+| Após entrevistas | Síntese: padrões, hipóteses confirmadas/contrariadas, prioridades | Proposta de ajustes no `DATABASE.md` e políticas; mudanças requerem revisão/aprovação |
 | 6–10 | Demonstração em staging para as 2 ou 3 arenas mais interessadas | Candidata a piloto |
 | 10–13 | Proposta de piloto com escopo, prazo e condições por escrito | Contrato assinado |
 | 14+ | Piloto (Fase 7) | Evidência de uso e preço |
@@ -1337,7 +1343,7 @@ Registrar respostas literais, não interpretações. Uma página por arena.
 ### 14.3. Proposta de piloto
 
 - Escopo fechado: funcionalidades do MVP (§1.1), identidade visual da arena (§9), implantação assistida, treinamento, suporte por WhatsApp em horário comercial.
-- Fora do escopo, por escrito: app, página pública, Pix integrado, bar, eventos.
+- Fora do escopo, por escrito: app, página pública, bar, eventos.
 - Duração, condições de pagamento e o que acontece ao fim do piloto (continuidade com mensalidade, ou exportação dos dados).
 - Hipótese de preço a testar: implantação R$ 590 + mensalidade R$ 99. Alternativa a testar: implantação reduzida em troca de feedback semanal e depoimento.
 - Nada é prometido verbalmente que não esteja no documento da proposta.
@@ -1410,7 +1416,7 @@ As tarefas das Fases 4 a 6 seguem os checklists da §11 com o mesmo formato, uma
 
 ## 16. ADRs, riscos e decisões pendentes
 
-Oito decisões estruturais viram ADRs curtos em `docs/decisions/`; três delas (003, 004 e 006) fecham na Fase 1 e bloqueiam a Fase 2 se ficarem abertas.
+Decisões arquiteturais ficam em ADRs curtos em `docs/decisions/`. ADR-003/004/006 e o gate técnico da Fase 1 foram concluídos; ADR-009 registra a estratégia de produto. Decisões pendentes no modelo são submetidas ao fundador antes das migrations relacionadas, sem depender de entrevistas prévias.
 
 ### 16.1. ADRs
 
@@ -1424,6 +1430,9 @@ Oito decisões estruturais viram ADRs curtos em `docs/decisions/`; três delas (
 | 006 | Fila de jobs | pg-boss ou graphile-worker | Fase 1 |
 | 007 | Temas por arena | JSON validado + variáveis CSS + `organization_themes` | Fase 0 |
 | 008 | Hospedagem | A, B ou C da §13.1 conforme custo | Fase 0 |
+| 009 | Estratégia de produto | Desenvolvimento guiado pela visão do fundador; entrevistas adiadas | 27/11/2026 |
+| 010 | Decisões do fundador | Identidade, acesso e direção das fases comerciais | Fase 2 |
+| 011 | Domínios por organização | Domínio próprio ou subdomínio com hostname único e ativação controlada | Fases 2, 3 e 6 |
 
 **Plano B do ADR-004:** se o Prisma gerar drift ou tentar remover a coluna gerada ou a constraint, (1) manter o Prisma para o restante e acessar `schedule_occupancies` só por SQL tipado com Kysely dentro do módulo `scheduling`, ou (2) usar `prisma migrate` só para aplicar migrations escritas à mão (sem `migrate dev` gerando SQL). Não trocar o ORM da aplicação inteira.
 
@@ -1433,9 +1442,9 @@ Oito decisões estruturais viram ADRs curtos em `docs/decisions/`; três delas (
 | --- | --- | --- | --- |
 | Escopo crescer antes do piloto | Alta | Alto | MVP fechado (§1); pedidos novos vão para backlog com valor e frequência |
 | Prisma incompatível com a constraint | Média | Alto | Spike na Fase 1 antes de qualquer código de agenda; plano B pronto |
-| Regras de mensalista diferentes do previsto | Alta | Alto | Entrevistas antes de congelar o modelo; contrato estável e acertos manuais de mês parcial |
+| Regras de mensalista diferem da hipótese inicial | Alta | Alto | Marcar premissas; contrato estável, versionamento, cálculo proporcional versionado, configuração somente onde prevista e migrations aditivas após feedback |
 | Estimativas estouradas por serviços express em paralelo | Alta | Médio | Reservar dias fixos por semana para o ArenaHub; replanejar a cada gate |
-| Nenhuma arena aceitar o piloto | Média | Alto | Começar conversas na semana 1; protótipo navegável; condição de piloto flexível |
+| Requisitos/adoção divergem da visão inicial | Média | Alto | Demonstrar solução funcional quando madura, validar com 3–5 arenas e replanejar o produto antes do piloto |
 | Arena abandonar o uso após o treinamento | Média | Alto | Operação paralela, acompanhamento semanal, foco no problema da pergunta 5 |
 | Criação de temas consumir muito tempo por arena | Média | Médio | Contrato de tema fechado, `theme:check` automático, meta de 2 h |
 | Perda de dados | Baixa | Muito alto | PostgreSQL gerenciado, backup fora do provedor, restauração testada |
@@ -1446,11 +1455,12 @@ Oito decisões estruturais viram ADRs curtos em `docs/decisions/`; três delas (
 
 | Tema | Depende de | Prazo |
 | --- | --- | --- |
-| Granularidade, durações, intervalo, antecedência (padrões) | Entrevistas | Semana 3 |
-| Cobrança de mensalista: mensal ou por ocorrência (padrão) | Entrevistas | Semana 3 |
-| Política de cancelamento e no-show (padrão) | Entrevistas | Semana 3 |
-| Funcionário pode cancelar? | Entrevistas | Semana 3 |
-| Espaços divisíveis nos primeiros pilotos | Entrevistas | Semana 3 (modelo já suporta) |
+| Aprovar entidades e relações do candidato `DATABASE.md`/ERD | Fundador | Antes das migrations definitivas correspondentes |
+| Múltiplos Owners e proteção do último | Aprovado pelo fundador | Fase 2 |
+| Aprovar defaults de grade, duração, antecedência e buffers | Fundador; feedback comercial posterior pode reavaliar | Antes de habilitar configuração na UI |
+| Aprovar política inicial de mensalista, mês parcial, feriado e cancelamento/no-show | Fundador; registrar como hipótese até validação comercial | Antes dos fluxos financeiros/agenda correspondentes |
+| Confirmar escopo de staff para cancelar e ver cobrança do cliente atendido | Fundador; feedback comercial posterior pode reavaliar | Antes de publicar permissões dessas rotas |
+| Validar divisibilidade de espaços e prioridade de suporte inicial | Fundador como prioridade de MVP; entrevistas posteriores informam adoção | Antes do fechamento da Fase 3 |
 | Valores finais do tema LumixEngine Dark e fonte | CSS do site da LumixEngine | Fase 0 |
 | Lista curada de fontes | Primeiras arenas | Fase 2 |
 | Hospedagem e custo mensal | Estimativa da §13.1 | Fase 0 |
@@ -1459,5 +1469,5 @@ Oito decisões estruturais viram ADRs curtos em `docs/decisions/`; três delas (
 | Preço de implantação e mensalidade | Piloto | Fim da Fase 7 |
 | Página pública, login do cliente, app | Evidência do piloto | Fase 9 |
 | Política de retenção pós-contrato | Revisão jurídica | Fase 6 |
-| Regra comercial para valor de mês parcial de mensalista | Entrevistas | Semana 3; até lá, acerto manual obrigatório |
-| Funcionário pode ver pendências globais ou decidir taxa de no-show? | Entrevistas | Semana 3; padrão v3.2: não |
+| Base do primeiro mês proporcional automático | Fundador define arredondamento, vigência e feriados | Antes da Fase 5 |
+| Funcionário pode ver pendências globais ou decidir taxa de no-show? | Decisão atual do produto: não; fundador confirma na aprovação do modelo. Pesquisa posterior pode reavaliar | Antes de rotas financeiras |

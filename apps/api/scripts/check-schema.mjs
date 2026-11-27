@@ -56,7 +56,60 @@ try {
     /tstzrange\(start_at, end_at, '\[\)'/,
     'período semiaberto',
   );
-  console.log('Garantias SQL do schema experimental verificadas.');
+  const foreignKeys = await client.query(
+    "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='arena_identity.membership_roles'::regclass AND contype='f'",
+  );
+  for (const fields of ['organization_id, user_id', 'organization_id, role_id']) {
+    if (!foreignKeys.rows.some((row) => row.definition.startsWith('FOREIGN KEY (' + fields + ')')))
+      throw Error('FK de atribuição ausente');
+  }
+  const catalog = await client.query('SELECT code FROM arena_identity.permissions ORDER BY code');
+  const { permissionCodes } = await import('@arenahub/contracts');
+  if (catalog.rows.map((r) => r.code).join() !== [...permissionCodes].sort().join())
+    throw Error('Catálogo de capabilities divergente');
+  const guards = await client.query(`
+    SELECT tgname, tgdeferrable, pg_get_triggerdef(oid) AS definition
+    FROM pg_trigger WHERE tgrelid IN (
+      'arena_identity.organizations'::regclass,
+      'arena_identity.memberships'::regclass,
+      'arena_identity.users'::regclass,
+      'arena_identity.audit_logs'::regclass
+    ) AND NOT tgisinternal`);
+  for (const name of ['organization_owner', 'membership_owner', 'account_owner']) {
+    const guard = guards.rows.find((row) => row.tgname === name);
+    if (!guard?.tgdeferrable || !guard.definition.includes('check_owner_change'))
+      throw Error(`Garantia SQL ausente: ${name}`);
+  }
+  if (
+    !guards.rows.some(
+      (row) => row.tgname === 'audit_append_only' && row.definition.includes('preserve_audit'),
+    )
+  )
+    throw Error('Proteção SQL de auditoria ausente');
+  const domains = await client.query(`
+    SELECT indexdef FROM pg_indexes WHERE schemaname='arena_identity'
+      AND tablename='organization_domains'`);
+  if (!domains.rows.some((row) => /UNIQUE INDEX.*\(hostname\)/.test(row.indexdef)))
+    throw Error('Unicidade global de hostname ausente');
+  const domainChecks = await client.query(`
+    SELECT conrelid::regclass::text AS table_name, contype, pg_get_constraintdef(oid) AS definition
+    FROM pg_constraint WHERE conrelid IN (
+      'arena_identity.organizations'::regclass,
+      'arena_identity.organization_domains'::regclass
+    )`);
+  const has = (table, type, pattern) =>
+    domainChecks.rows.some(
+      (row) => row.table_name === table && row.contype === type && pattern.test(row.definition),
+    );
+  if (!has('arena_identity.organizations', 'c', /length\(slug\) <= 63.*slug/))
+    throw Error('Garantia SQL de slug seguro ausente');
+  if (!has('arena_identity.organization_domains', 'f', /FOREIGN KEY \(organization_id\)/))
+    throw Error('FK de domínio ausente');
+  if (!has('arena_identity.organization_domains', 'c', /hostname = lower\(hostname\)/))
+    throw Error('Normalização SQL de hostname ausente');
+  if (!has('arena_identity.organization_domains', 'c', /status.*active.*activated_at/))
+    throw Error('Estado de ativação de domínio sem CHECK');
+  console.log('Garantias SQL de ocupação, identidade e domínios verificadas.');
 } finally {
   await client.end().catch(() => undefined);
 }

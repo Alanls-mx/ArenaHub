@@ -1,6 +1,8 @@
-# Validação comercial pendente
+# Roteiro de validação comercial — adiado por decisão estratégica
 
-Não há registros de entrevistas com três a cinco proprietários. Use uma ficha por arena: data, perfil, porte, entrevistado, evidência literal, interpretação, decisão de modelo afetada e pendência. Registre consentimento antes de guardar dados pessoais.
+**Estado:** entrevistas com três a cinco proprietários foram adiadas por decisão estratégica do fundador em 27/11/2026. Não são bloqueio para a Fase 2 nem para o desenvolvimento. Serão realizadas quando houver uma solução funcional e suficientemente madura para demonstração. Não há entrevistas nem evidências comerciais registradas neste documento.
+
+Este roteiro permanece como ferramenta futura. Ao retomar a validação, use uma ficha por arena: data, perfil, porte, entrevistado, evidência literal, interpretação, decisão de modelo afetada e pendência. Registre consentimento antes de guardar dados pessoais. Não apresente hipótese ou simulação como evidência coletada.
 
 Perguntas prioritárias:
 
@@ -12,4 +14,4 @@ Perguntas prioritárias:
 6. Funcionários precisam ver pendências globais ou só as do cliente atendido?
 7. Como conciliar Pix, pagamentos parciais, estornos e créditos?
 
-Após as entrevistas, registre respostas divergentes e valide quais escolhas são padrão, configuração por arena ou fora do MVP. Até lá, o gate comercial da Fase 1 permanece aberto.
+Quando a pesquisa for retomada, registre respostas divergentes e avalie quais escolhas devem ser padrão, configuração por arena ou fora do MVP. Até a aprovação comercial, mantenha as regras como hipóteses e evite compromissos irreversíveis que dificultem evolução. O adiamento não congela o modelo definitivo; decisões estruturais destacadas em `DATABASE.md` e `ERD.md` ainda requerem aprovação explícita do fundador antes das migrations de domínio correspondentes.

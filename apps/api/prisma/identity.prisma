@@ -1,0 +1,179 @@
+generator client {
+ provider = "prisma-client"
+ output = "../src/generated/identity"
+ previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["arena_identity"]
+}
+
+model audit_logs {
+  id              BigInt         @id @default(autoincrement())
+  actor_id        String         @db.Uuid
+  organization_id String?        @db.Uuid
+  action          String
+  entity          String
+  request_id      String
+  created_at      DateTime       @default(now()) @db.Timestamptz(6)
+  users           users          @relation(fields: [actor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations   organizations? @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("arena_identity")
+}
+
+model invites {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  email           String
+  token_hash      String        @unique
+  invited_by      String        @db.Uuid
+  expires_at      DateTime      @db.Timestamptz(6)
+  closed_at       DateTime?     @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  memberships     memberships   @relation(fields: [organization_id, invited_by], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, email], map: "pending_email", where: raw("(closed_at IS NULL)"))
+  @@schema("arena_identity")
+}
+
+model membership_roles {
+  organization_id String      @db.Uuid
+  user_id         String      @db.Uuid
+  role_id         String      @db.Uuid
+  roles           roles       @relation(fields: [organization_id, role_id], references: [organization_id, id], onDelete: Cascade, onUpdate: NoAction)
+  memberships     memberships @relation(fields: [organization_id, user_id], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([organization_id, user_id, role_id])
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model memberships {
+  organization_id     String               @db.Uuid
+  user_id             String               @db.Uuid
+  status              String               @default("active")
+  is_owner            Boolean              @default(false)
+  invites             invites[]
+  membership_roles    membership_roles[]
+  organizations       organizations        @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users               users                @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization_themes organization_themes[]
+
+  @@id([organization_id, user_id])
+  @@schema("arena_identity")
+}
+
+model organization_themes {
+  organization_id String        @id @db.Uuid
+  theme           Json
+  previous_theme  Json?
+  version         Int           @default(1)
+  published_at    DateTime      @default(now()) @db.Timestamptz(6)
+  published_by    String        @db.Uuid
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  memberships     memberships   @relation(fields: [organization_id, published_by], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("arena_identity")
+}
+
+model organizations {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug                String               @unique
+  name                String
+  active              Boolean              @default(true)
+  created_at          DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime             @default(now()) @db.Timestamptz(6)
+  timezone            String               @default("America/Sao_Paulo")
+  audit_logs          audit_logs[]
+  invites             invites[]
+  memberships         memberships[]
+  organization_themes organization_themes?
+  organization_domains organization_domains[]
+  roles               roles[]
+
+  @@schema("arena_identity")
+}
+
+model organization_domains {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String @db.Uuid
+  hostname String @unique
+  kind String
+  status String @default("pending")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  activated_at DateTime? @db.Timestamptz(6)
+  organizations organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@index([organization_id], map: "organization_domains_org")
+  @@schema("arena_identity")
+}
+
+model password_resets {
+  token_hash String   @id
+  user_id    String   @db.Uuid
+  expires_at DateTime @db.Timestamptz(6)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("arena_identity")
+}
+
+model permissions {
+  code             String             @id
+  role_permissions role_permissions[]
+
+  @@schema("arena_identity")
+}
+
+model role_permissions {
+  organization_id String      @db.Uuid
+  role_id         String      @db.Uuid
+  code            String
+  permissions     permissions @relation(fields: [code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  roles           roles       @relation(fields: [organization_id, role_id], references: [organization_id, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([organization_id, role_id, code])
+  @@schema("arena_identity")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model roles {
+  organization_id  String             @db.Uuid
+  id               String             @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  description      String             @default("")
+  membership_roles membership_roles[]
+  role_permissions role_permissions[]
+  organizations    organizations      @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([organization_id, id])
+  @@schema("arena_identity")
+}
+
+model sessions {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  token_hash String    @unique
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  seen_at    DateTime  @default(now()) @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model users {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String            @unique
+  name            String
+  password_hash   String
+  disabled_at     DateTime?         @db.Timestamptz(6)
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  audit_logs      audit_logs[]
+  memberships     memberships[]
+  password_resets password_resets[]
+  sessions        sessions[]
+
+  @@schema("arena_identity")
+}

@@ -220,3 +220,76 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+.identity {
+  max-width: 1140px;
+}
+.identity .signin {
+  max-width: 420px;
+  margin: 12vh auto;
+}
+.identity h1 {
+  font-size: clamp(32px, 5vw, 54px);
+}
+.identity form,
+.identity aside {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.identity label {
+  display: grid;
+  gap: 6px;
+}
+.identity input:not([type='checkbox']),
+.identity select,
+.identity button {
+  font: inherit;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--color-surface-raised);
+  max-width: 100%;
+}
+.identity button {
+  cursor: pointer;
+}
+.identity form > button {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  font-weight: bold;
+}
+.identity details,
+.identity article,
+.identity aside {
+  margin: 12px 0;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 12px;
+}
+.identity summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.identity form {
+  margin: 14px 0;
+}
+.identity label:has(input[type='checkbox']) {
+  display: flex;
+  align-items: center;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  margin-top: 32px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 720px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

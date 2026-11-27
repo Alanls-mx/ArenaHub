@@ -62,6 +62,10 @@ async function main() {
     delete env.DATABASE_URL;
     await run(process.execPath, [pnpmCli, 'exec', 'prisma', 'migrate', 'deploy'], env);
     await run(process.execPath, [pnpmCli, 'run', 'db:check'], env);
+    if (process.argv.includes('--visual')) {
+      await run(process.execPath, ['--import', 'tsx', 'scripts/visual-identity.ts'], env);
+      return;
+    }
     await run(
       process.execPath,
       [
