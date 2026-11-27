@@ -45,3 +45,19 @@ O [relatório de auditoria direcionada](PHASE2_AUDIT.md) verificou as 12 decisõ
 | Lint, formatação, typecheck, build, diff | Aprovados                                                                                              |
 
 A auditoria original da Fase 1 e o gate anterior permanecem como registros históricos. Na preparação para publicação, `checkout`, `pnpm/action-setup` e `setup-node` foram atualizadas para v5, cujo runtime é Node 24; a eficácia dessa manutenção depende do CI remoto. O PR da Fase 2 ainda não havia sido publicado nesta revalidação local.
+
+## Encerramento técnico após publicação — 27/11/2026
+
+**FASE 2 CONCLUÍDA — IDENTIDADE, AUTENTICAÇÃO E CONTROLE DE ACESSO APROVADOS.** A classificação resulta da aprovação local, da [auditoria direcionada](PHASE2_AUDIT.md), dos checks da branch e do CI da `main` após o merge tradicional do [PR #2](https://github.com/Alanls-mx/ArenaHub/pull/2). Não representa deploy nem ativação comercial de domínios próprios.
+
+| Etapa           | Evidência efetiva                                                                                                                                                                                                                                              |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Aprovação local | 19/19 unitários, 59/59 integrações, sete migrations e `db:check` em PostgreSQL descartável, sem drift Prisma; lint, formatação, typecheck, build e `git diff --check` aprovados. Next, Fastify, Chrome e Mailpit passaram no teste visual nas três resoluções. |
+| Auditoria       | Achados P1 resolvidos; nenhum P0/P1 remanescente conhecido. Decisões do fundador e limites dos domínios registrados em ADR-010 e ADR-011.                                                                                                                      |
+| CI da branch    | SHA `4bdc63e7fff1f7e6403dfde705a4c4000fc50c12`: [push](https://github.com/Alanls-mx/ArenaHub/actions/runs/46068302104) e [PR](https://github.com/Alanls-mx/ArenaHub/actions/runs/46068364696) aprovados em Linux.                                              |
+| Merge           | PR #2 mesclado pelo método tradicional; merge commit `5544dfbc9034c51b061e33646e97a8d6f9fc89a6`.                                                                                                                                                               |
+| CI da main      | [Run 46068697453](https://github.com/Alanls-mx/ArenaHub/actions/runs/46068697453) aprovado no merge commit.                                                                                                                                                    |
+
+O workflow remoto executou instalação com lockfile congelado, geração Prisma, lint, formatação, typecheck, unitários, Docker/Testcontainers, migrations, `db:check`, integração e build. A automação com Chrome/Mailpit é uma verificação **local**, não parte do workflow remoto. A atualização pontual das três Actions para v5 funcionou nos três runs remotos; o aviso histórico de Node 20 foi tratado.
+
+Permanecem fora do gate técnico da Fase 2: SMTP de produção, papéis PostgreSQL de runtime e reavaliação de RLS antes do piloto, login operacional entre domínios independentes, DNS/TLS, detalhes da política central de cancelamento, fórmula definitiva do primeiro mês proporcional e homologação Mercado Pago por recebedor. Nenhuma funcionalidade da Fase 3 foi iniciada.
