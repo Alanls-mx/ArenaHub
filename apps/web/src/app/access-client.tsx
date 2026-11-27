@@ -9,6 +9,7 @@ import {
   type Theme,
 } from '@arenahub/contracts';
 import { useEffect, useState, type FormEvent } from 'react';
+import Operations from './operations-client';
 
 const permissionLabel: Record<Capability, string> = {
   'members.read': 'Consultar membros',
@@ -26,6 +27,20 @@ const permissionLabel: Record<Capability, string> = {
   'payments.reverse': 'Estornar lançamentos',
   'refunds.request': 'Solicitar reembolso',
   'integrations.manage': 'Gerenciar integrações financeiras',
+  'customers.read': 'Consultar clientes',
+  'customers.manage': 'Gerenciar clientes',
+  'customers.archive': 'Arquivar clientes',
+  'sports.read': 'Consultar modalidades',
+  'sports.manage': 'Gerenciar modalidades',
+  'venues.read': 'Consultar espaços',
+  'venues.manage': 'Gerenciar espaços',
+  'units.manage': 'Gerenciar unidades físicas',
+  'hours.read': 'Consultar horários e exceções',
+  'hours.manage': 'Gerenciar horários e exceções',
+  'pricing.read': 'Consultar regras de preço',
+  'pricing.manage': 'Gerenciar regras de preço',
+  'pricing.simulate': 'Simular preços',
+  'domains.manage': 'Solicitar domínio personalizado',
 };
 type Me = ReturnType<typeof sessionSchema.parse>;
 type Role = ReturnType<typeof roleViewSchema.parse>;
@@ -85,7 +100,8 @@ export default function AccessClient() {
     [secret, setSecret] = useState(''),
     [org, setOrg] = useState(''),
     [message, msg] = useState(''),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [section, setSection] = useState<'operations' | 'team'>('operations');
   async function load() {
     const user = sessionSchema.parse(await api('/auth/me'));
     setMe(user);
@@ -171,7 +187,18 @@ export default function AccessClient() {
               </select>
             </label>
             <nav aria-label="Navegação da conta">
-              <a href="#equipe">Equipe da arena</a>
+              <button
+                aria-current={section === 'operations' ? 'page' : undefined}
+                onClick={() => setSection('operations')}
+              >
+                Operação da arena
+              </button>
+              <button
+                aria-current={section === 'team' ? 'page' : undefined}
+                onClick={() => setSection('team')}
+              >
+                Equipe e acesso
+              </button>
             </nav>
             <Sessions csrf={me.csrf} />
             <details>
@@ -210,7 +237,11 @@ export default function AccessClient() {
             </button>
           </aside>
           {org ? (
-            <Team key={org} org={org} csrf={me.csrf} />
+            section === 'operations' ? (
+              <Operations key={org} org={org} csrf={me.csrf} />
+            ) : (
+              <Team key={org} org={org} csrf={me.csrf} />
+            )
           ) : (
             <p>Nenhuma arena ativa para esta conta.</p>
           )}

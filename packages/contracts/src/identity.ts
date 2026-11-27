@@ -21,6 +21,20 @@ export const permissionCodes = [
   'payments.reverse',
   'refunds.request',
   'integrations.manage',
+  'customers.read',
+  'customers.manage',
+  'customers.archive',
+  'sports.read',
+  'sports.manage',
+  'venues.read',
+  'venues.manage',
+  'units.manage',
+  'hours.read',
+  'hours.manage',
+  'pricing.read',
+  'pricing.manage',
+  'pricing.simulate',
+  'domains.manage',
 ] as const;
 export type Capability = (typeof permissionCodes)[number];
 export const roleSchema = z.strictObject({
@@ -35,9 +49,32 @@ export const sessionSchema = z.object({
   organizations: z.array(z.object({ slug: z.string(), name: z.string() })),
 });
 export const templates: Record<string, readonly Capability[]> = {
-  Administrador: permissionCodes.filter((c) => c !== 'integrations.manage'),
-  Gerente: ['members.read', 'charges.read', 'payments.record', 'pix.create'],
-  Staff: ['charges.read', 'payments.record'],
+  Administrador: permissionCodes.filter(
+    (c) => c !== 'integrations.manage' && c !== 'customers.archive' && c !== 'domains.manage',
+  ),
+  Gerente: [
+    'members.read',
+    'charges.read',
+    'payments.record',
+    'pix.create',
+    'customers.read',
+    'customers.manage',
+    'sports.read',
+    'venues.read',
+    'hours.read',
+    'pricing.read',
+    'pricing.simulate',
+  ],
+  Staff: [
+    'charges.read',
+    'payments.record',
+    'customers.read',
+    'customers.manage',
+    'sports.read',
+    'venues.read',
+    'hours.read',
+    'pricing.simulate',
+  ],
   Financeiro: [
     'charges.read',
     'payments.record',

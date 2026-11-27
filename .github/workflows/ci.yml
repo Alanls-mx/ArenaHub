@@ -30,6 +30,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
+      - run: pnpm openapi:check
       - run: pnpm test
       - name: Verify Docker engine for Testcontainers and restart tests
         run: docker info --format '{{.ServerVersion}}'

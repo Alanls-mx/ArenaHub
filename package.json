@@ -14,6 +14,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "openapi:generate": "pnpm --filter @arenahub/contracts build && pnpm --filter @arenahub/api openapi:generate",
+    "openapi:check": "pnpm --filter @arenahub/contracts build && pnpm --filter @arenahub/api openapi:check",
     "org:create": "pnpm --filter @arenahub/api org:create",
     "theme:check": "node --import ./apps/api/node_modules/tsx/dist/loader.mjs apps/api/scripts/theme.ts check",
     "theme:publish": "node --import ./apps/api/node_modules/tsx/dist/loader.mjs apps/api/scripts/theme.ts publish",

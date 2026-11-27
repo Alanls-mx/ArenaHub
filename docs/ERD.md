@@ -36,7 +36,7 @@ erDiagram
 
 A chave da membership é (organization_id, user_id). is_owner é um atributo protegido. As duas pontas das atribuições compartilham organization_id. Cada organização operacional é provisionada com um Owner ativo. Instâncias de cargo têm nome único por organização, sem distinguir caixa.
 
-Os diagramas seguintes são planejamento das fases 3 a 5. Pix acrescentará conta vinculada, intenção, tentativa, evento, reembolso e conciliação por organização. A reserva referencia uma versão da política central de cancelamento.
+As nove tabelas de estrutura e clientes da Fase 3 estão implementadas em `arena_identity` pela migration `20261127014000_operational_structure`. No diagrama abaixo, `VENUE_BLOCKS`, `CUSTOMER_NOTES` e o login opcional de cliente continuam planejamento de fases posteriores; `PRICING_RULES` armazena faixas como `start_minute` e `end_minute` em vez de horários SQL. Pix acrescentará conta vinculada, intenção, tentativa, evento, reembolso e conciliação por organização. A reserva futura referencia uma versão da política central de cancelamento.
 
 ## Configuração da arena e clientes
 
@@ -126,8 +126,8 @@ erDiagram
         uuid sport_id FK
         date specific_date
         int weekday
-        time start_time
-        time end_time
+        smallint start_minute
+        smallint end_minute
         bigint price_per_hour_cents
         date valid_from
         date valid_until
@@ -135,7 +135,7 @@ erDiagram
     CUSTOMERS {
         uuid id PK
         uuid organization_id FK
-        uuid user_id FK
+        uuid user_id "Fase posterior"
         text name
         text phone_e164
         citext email

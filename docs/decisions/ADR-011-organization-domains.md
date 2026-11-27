@@ -17,3 +17,7 @@ O cookie `__Host-session` pertence ao host que o emitiu. Uma sessão criada no h
 Se o produto exigir entrada centralizada, o fluxo deverá validar previamente a organização e o destino registrado, autenticar na origem central, emitir código aleatório de uso único com expiração curta, trocar o código por sessão nova no host de destino e vincular a troca à membership ativa. Código e estado devem ficar protegidos contra replay, CSRF e redirecionamento arbitrário. O token de sessão não entra na URL. A troca e a revogação precisam de testes próprios antes de ativar domínios personalizados.
 
 O mesmo host continuará servindo Web e `/api/v1` por proxy. Cada host usa cookie próprio, CSRF de sua sessão e origem estrita. CORS amplo e cookies de terceiros não fazem parte do fluxo.
+
+## Administração inicial na Fase 3
+
+Owner ou cargo com `domains.manage` pode listar hostnames da própria organização e registrar uma solicitação de domínio personalizado com hostname normalizado e globalmente único. A nova linha fica exclusivamente em `pending`; a API não oferece transição de estado, verificação DNS, configuração TLS nem disponibilização operacional. O nome comercial do subdomínio da plataforma permanece pendente, então a interface não fabrica um endereço. Auditoria registra o ID da solicitação na mesma transação. Ativação e login em host independente continuam sujeitos aos controles acima.

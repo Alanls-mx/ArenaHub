@@ -1,7 +1,7 @@
 generator client {
- provider = "prisma-client"
- output = "../src/generated/identity"
- previewFeatures = ["partialIndexes"]
+  provider        = "prisma-client"
+  output          = "../src/generated/identity"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -79,32 +79,38 @@ model organization_themes {
 }
 
 model organizations {
-  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  slug                String               @unique
-  name                String
-  active              Boolean              @default(true)
-  created_at          DateTime             @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime             @default(now()) @db.Timestamptz(6)
-  timezone            String               @default("America/Sao_Paulo")
-  audit_logs          audit_logs[]
-  invites             invites[]
-  memberships         memberships[]
-  organization_themes organization_themes?
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug                 String                 @unique
+  name                 String
+  active               Boolean                @default(true)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  timezone             String                 @default("America/Sao_Paulo")
+  audit_logs           audit_logs[]
+  calendar_exceptions  calendar_exceptions[]
+  customers            customers[]
+  invites              invites[]
+  memberships          memberships[]
   organization_domains organization_domains[]
-  roles               roles[]
+  organization_themes  organization_themes?
+  roles                roles[]
+  sports               sports[]
+  venue_units          venue_units[]
+  venues               venues[]
 
   @@schema("arena_identity")
 }
 
 model organization_domains {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organization_id String @db.Uuid
-  hostname String @unique
-  kind String
-  status String @default("pending")
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  activated_at DateTime? @db.Timestamptz(6)
-  organizations organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  hostname        String        @unique
+  kind            String
+  status          String        @default("pending")
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  activated_at    DateTime?     @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
   @@index([organization_id], map: "organization_domains_org")
   @@schema("arena_identity")
 }
@@ -175,5 +181,164 @@ model users {
   password_resets password_resets[]
   sessions        sessions[]
 
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model calendar_exceptions {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  venue_id        String?       @db.Uuid
+  date            DateTime      @db.Date
+  kind            String
+  open_time       DateTime?     @db.Time(6)
+  close_time      DateTime?     @db.Time(6)
+  description     String        @default("")
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  venues          venues?       @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@unique([organization_id, venue_id, date])
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model customers {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  name            String
+  phone_e164      String?
+  email           String?
+  archived_at     DateTime?     @db.Timestamptz(6)
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@index([organization_id, phone_e164], map: "customers_phone")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model operating_hours {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  venue_id        String   @db.Uuid
+  weekday         Int      @db.SmallInt
+  open_time       DateTime @db.Time(6)
+  close_time      DateTime @db.Time(6)
+  spans_full_day  Boolean  @default(false)
+  venues          venues   @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@index([organization_id, venue_id, weekday], map: "operating_hours_venue_day")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model pricing_rules {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id      String    @db.Uuid
+  venue_id             String    @db.Uuid
+  sport_id             String?   @db.Uuid
+  specific_date        DateTime? @db.Date
+  weekday              Int?      @db.SmallInt
+  start_minute         Int       @db.SmallInt
+  end_minute           Int       @db.SmallInt
+  price_per_hour_cents BigInt
+  valid_from           DateTime? @db.Date
+  valid_until          DateTime? @db.Date
+  archived_at          DateTime? @db.Timestamptz(6)
+  created_at           DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime  @default(now()) @db.Timestamptz(6)
+  sports               sports?   @relation(fields: [organization_id, sport_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  venues               venues    @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@index([organization_id, venue_id, archived_at, specific_date, weekday], map: "pricing_rules_lookup")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model sports {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String          @db.Uuid
+  name            String
+  archived_at     DateTime?       @db.Timestamptz(6)
+  created_at      DateTime        @default(now()) @db.Timestamptz(6)
+  pricing_rules   pricing_rules[]
+  organizations   organizations   @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  venue_sports    venue_sports[]
+
+  @@unique([organization_id, id])
+  @@schema("arena_identity")
+}
+
+model venue_sports {
+  organization_id String @db.Uuid
+  venue_id        String @db.Uuid
+  sport_id        String @db.Uuid
+  sports          sports @relation(fields: [organization_id, sport_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  venues          venues @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([organization_id, venue_id, sport_id])
+  @@index([organization_id, sport_id], map: "venue_sports_sport")
+  @@schema("arena_identity")
+}
+
+model venue_unit_links {
+  organization_id String      @db.Uuid
+  venue_id        String      @db.Uuid
+  unit_id         String      @db.Uuid
+  venue_units     venue_units @relation(fields: [organization_id, unit_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  venues          venues      @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([organization_id, venue_id, unit_id])
+  @@index([organization_id, unit_id, venue_id], map: "venue_unit_links_unit")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model venue_units {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String             @db.Uuid
+  name             String
+  archived_at      DateTime?          @db.Timestamptz(6)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  venue_unit_links venue_unit_links[]
+  organizations    organizations      @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model venues {
+  id                           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id              String                @db.Uuid
+  name                         String
+  slot_minutes                 Int?
+  min_minutes                  Int?
+  max_minutes                  Int?
+  buffer_minutes               Int?
+  default_price_per_hour_cents BigInt?
+  color                        String?
+  sort_order                   Int                   @default(0)
+  archived_at                  DateTime?             @db.Timestamptz(6)
+  created_at                   DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime              @default(now()) @db.Timestamptz(6)
+  calendar_exceptions          calendar_exceptions[]
+  operating_hours              operating_hours[]
+  pricing_rules                pricing_rules[]
+  venue_sports                 venue_sports[]
+  venue_unit_links             venue_unit_links[]
+  organizations                organizations         @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@index([organization_id, archived_at, sort_order, name], map: "venues_order")
   @@schema("arena_identity")
 }

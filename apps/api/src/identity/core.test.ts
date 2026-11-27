@@ -12,7 +12,16 @@ it('deriva senhas com sal independente e compara inclusive identidade ausente', 
 it('limita templates ao catálogo e separa registro de recebimentos da visão global', () => {
   for (const caps of Object.values(templates))
     for (const code of caps) expect(permissionCodes).toContain(code);
-  expect(templates.Staff).toEqual(['charges.read', 'payments.record']);
+  expect(templates.Staff).toEqual([
+    'charges.read',
+    'payments.record',
+    'customers.read',
+    'customers.manage',
+    'sports.read',
+    'venues.read',
+    'hours.read',
+    'pricing.simulate',
+  ]);
   expect(
     roleSchema.safeParse({ name: 'Owner', description: '', permissions: ['owner'] }).success,
   ).toBe(false);
