@@ -61,25 +61,18 @@ async function main() {
     };
     delete env.DATABASE_URL;
     await run(process.execPath, [pnpmCli, 'exec', 'prisma', 'migrate', 'deploy'], env);
+    await run(process.execPath, [pnpmCli, 'run', 'db:check'], env);
     await run(
       process.execPath,
       [
         pnpmCli,
         'exec',
-        'prisma',
-        'migrate',
-        'diff',
-        '--from-config-datasource',
-        '--to-schema',
-        'prisma/schema.prisma',
-        '--exit-code',
+        'vitest',
+        'run',
+        '--config',
+        'vitest.integration.config.ts',
+        ...process.argv.slice(2),
       ],
-      env,
-    );
-    await run(process.execPath, ['scripts/check-schema.mjs'], env);
-    await run(
-      process.execPath,
-      [pnpmCli, 'exec', 'vitest', 'run', '--config', 'vitest.integration.config.ts'],
       env,
     );
   } finally {

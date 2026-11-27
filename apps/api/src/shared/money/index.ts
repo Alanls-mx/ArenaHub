@@ -29,7 +29,14 @@ export function multiplyRatio(value: Cents, numerator: bigint, denominator: bigi
 }
 
 export function formatBRL(value: Cents): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value / 100);
+  const amount = BigInt(value);
+  const negative = amount < 0n;
+  const absolute = negative ? -amount : amount;
+  const whole = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(
+    Number(absolute / 100n),
+  );
+  const fraction = String(absolute % 100n).padStart(2, '0');
+  return `${negative ? '-R$' : 'R$'} ${whole},${fraction}`;
 }
 
 export function serialize(value: Cents): number {

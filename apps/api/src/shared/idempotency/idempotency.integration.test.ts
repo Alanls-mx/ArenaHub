@@ -77,6 +77,9 @@ describe('idempotência transacional', () => {
       executeIdempotent(pool, { ...request, route: '/api/v1/other' }, effect),
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
     await expect(
+      executeIdempotent(pool, { ...request, method: 'PATCH' }, effect),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+    await expect(
       executeIdempotent(pool, { ...request, pathParams: { id: 'two' } }, effect),
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
   });
@@ -189,5 +192,40 @@ describe('idempotência transacional', () => {
       [request.key],
     );
     expect(await cleanExpiredIdempotency(pool)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('falha no armazenamento da resposta reverte efeito e chave', async () => {
+    const request = input();
+    const effectId = randomUUID();
+    await pool.query(`CREATE FUNCTION occupancy_spike.fail_idempotency_update() RETURNS trigger
+      LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic storage failure'; END $$`);
+    await pool.query(`CREATE TRIGGER fail_idempotency_update BEFORE UPDATE
+      ON occupancy_spike.idempotency_records FOR EACH ROW
+      EXECUTE FUNCTION occupancy_spike.fail_idempotency_update()`);
+    try {
+      await expect(
+        executeIdempotent(pool, request, async (client) => {
+          await client.query('INSERT INTO occupancy_spike.idempotency_effects (id) VALUES ($1)', [
+            effectId,
+          ]);
+          return { status: 201, body: { ok: true } };
+        }),
+      ).rejects.toMatchObject({ code: 'P0001' });
+      const effect = await pool.query(
+        'SELECT id FROM occupancy_spike.idempotency_effects WHERE id=$1',
+        [effectId],
+      );
+      const key = await pool.query(
+        'SELECT id FROM occupancy_spike.idempotency_records WHERE key=$1',
+        [request.key],
+      );
+      expect(effect.rowCount).toBe(0);
+      expect(key.rowCount).toBe(0);
+    } finally {
+      await pool.query(
+        'DROP TRIGGER fail_idempotency_update ON occupancy_spike.idempotency_records',
+      );
+      await pool.query('DROP FUNCTION occupancy_spike.fail_idempotency_update()');
+    }
   });
 });

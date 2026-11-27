@@ -24,6 +24,7 @@ describe('tempo local e instantes', () => {
     );
     expect(validateTimeZone('UTC')).toBe('UTC');
     expect(() => validateTimeZone('Not/AZone')).toThrow();
+    expect(() => validateTimeZone('+03:00')).toThrow();
   });
 
   it('exige escolha em horário ambíguo e recusa horário inexistente', () => {

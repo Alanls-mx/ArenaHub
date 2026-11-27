@@ -4,6 +4,7 @@ export type AmbiguousTimeChoice = 'earlier' | 'later';
 
 export function validateTimeZone(zone: string): string {
   try {
+    if (zone !== 'UTC' && !zone.includes('/')) throw new RangeError();
     Temporal.Now.zonedDateTimeISO(zone);
     return zone;
   } catch {

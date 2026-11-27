@@ -141,4 +141,79 @@ describe('limites do forTenant', () => {
     expect(nested.organizationId).toBe(secondOrg);
     expect(nested.occupancies).toHaveLength(1);
   });
+
+  it('createMany, updateMany, delete, deleteMany e aggregate do repository mantêm escopo', async () => {
+    const repo = unitRepository(prisma, { organizationId: firstOrg });
+    expect((await repo.createMany(['E', 'F'])).count).toBe(2);
+    expect((await repo.aggregate())._count).toBe(5);
+    expect((await repo.groupBy()).map((group) => group.organizationId)).toEqual([firstOrg]);
+    const created = (await repo.list()).filter((unit) => ['E', 'F'].includes(unit.name));
+    expect(created).toHaveLength(2);
+    const e = created.find((unit) => unit.name === 'E');
+    if (!e) throw new Error('Fixture E ausente');
+    expect((await repo.deleteMany([secondUnit, e.id])).count).toBe(1);
+    expect((await repo.delete(secondUnit)).count).toBe(0);
+    const toDelete = await repo.create('Delete unique');
+    expect((await repo.deleteUnique(toDelete.id)).id).toBe(toDelete.id);
+    await expect(repo.deleteUnique(secondUnit)).rejects.toThrow();
+    expect(
+      (await prisma.scheduleUnit.findUnique({ where: { id: secondUnit } }))?.organizationId,
+    ).toBe(secondOrg);
+  });
+
+  it('connect e connectOrCreate compostos impedem referência de outra organização', async () => {
+    const repo = unitRepository(prisma, { organizationId: firstOrg });
+    const start = new Date('2027-07-01T18:00:00Z');
+    const end = new Date('2027-07-01T19:00:00Z');
+    await expect(repo.createOccupancy(secondUnit, start, end)).rejects.toThrow();
+    await expect(repo.connectOrCreateOccupancy(secondUnit, start, end)).rejects.toThrow();
+    const own = await repo.createOccupancy(firstUnit, start, end);
+    expect(own.organizationId).toBe(firstOrg);
+    const createdUnitId = randomUUID();
+    const createdWithRelation = await repo.connectOrCreateOccupancy(
+      createdUnitId,
+      new Date('2027-07-02T18:00:00Z'),
+      new Date('2027-07-02T19:00:00Z'),
+    );
+    expect(createdWithRelation.organizationId).toBe(firstOrg);
+    expect((await repo.occupancies(firstUnit)).map((row) => row.id)).toContain(own.id);
+    expect(await repo.occupancies(secondUnit)).toEqual([]);
+  });
+
+  it('rejeita contexto ausente, inválido ou reutilizado para outra arena', async () => {
+    expect(() => unitRepository(prisma, undefined as never)).toThrow(/TenantContext/);
+    expect(() => forTenant(prisma, { organizationId: 'invalid' })).toThrow(/TenantContext/);
+    const a = unitRepository(prisma, { organizationId: firstOrg });
+    const b = unitRepository(prisma, { organizationId: secondOrg });
+    expect(await a.get(secondUnit)).toBeNull();
+    expect((await b.get(secondUnit))?.organizationId).toBe(secondOrg);
+    expect(await a.get(secondUnit)).toBeNull();
+  });
+
+  it('transação em lote e tentativa de trocar organizationId exigem contenção', async () => {
+    const [a, b] = await prisma.$transaction([
+      prisma.scheduleUnit.count({ where: { organizationId: firstOrg } }),
+      prisma.scheduleUnit.count({ where: { organizationId: secondOrg } }),
+    ]);
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBe(1);
+    const movable = await prisma.scheduleUnit.findFirst({
+      where: { organizationId: firstOrg, name: 'F' },
+    });
+    if (!movable) throw new Error('Fixture F ausente');
+    const sentinel = new Error('rollback-sentinel');
+    await expect(
+      prisma.$transaction(async (tx) => {
+        const unsafe = await tx.scheduleUnit.update({
+          where: { id: movable.id },
+          data: { organizationId: secondOrg },
+        });
+        expect(unsafe.organizationId).toBe(secondOrg);
+        throw sentinel;
+      }),
+    ).rejects.toBe(sentinel);
+    expect(
+      (await prisma.scheduleUnit.findUnique({ where: { id: movable.id } }))?.organizationId,
+    ).toBe(firstOrg);
+  });
 });

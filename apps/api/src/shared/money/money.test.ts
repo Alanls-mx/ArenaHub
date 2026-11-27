@@ -20,5 +20,7 @@ describe('BRL em centavos', () => {
   it('separa representação de domínio e visual', () => {
     expect(serialize(cents(12345))).toBe(12345);
     expect(formatBRL(cents(12345))).toContain('123,45');
+    expect(formatBRL(cents(Number.MAX_SAFE_INTEGER))).toContain('90.071.992.547.409,91');
+    expect(formatBRL(cents(-12345, true))).toContain('-R$');
   });
 });

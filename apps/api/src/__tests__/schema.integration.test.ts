@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { assertDisposableDatabase, requireDisposableDatabase } from './disposable-database.js';
@@ -79,5 +81,60 @@ describe('objetos SQL do spike após migrations sucessivas', () => {
     expect(fk?.definition).toMatch(/REFERENCES .*schedule_units\(organization_id, id\)/);
     const check = result.rows.find((row) => row.name === 'schedule_occupancies_valid_interval');
     expect(check?.definition).toMatch(/end_at > start_at/);
+  });
+
+  it('db:check semântico falha ao remover exclusão obrigatória', async () => {
+    await requireDisposableDatabase();
+    await client.query(
+      'ALTER TABLE occupancy_spike.schedule_occupancies DROP CONSTRAINT schedule_no_overlap',
+    );
+    try {
+      const result = spawnSync(process.execPath, ['scripts/check-schema.mjs'], {
+        cwd: fileURLToPath(new URL('../..', import.meta.url)),
+        env: process.env,
+        encoding: 'utf8',
+        timeout: 10_000,
+      });
+      expect(result.status).not.toBe(0);
+      expect(`${result.stderr}${result.stdout}`).toMatch(/exclusion parcial de ocupação/);
+    } finally {
+      await client.query(`ALTER TABLE occupancy_spike.schedule_occupancies
+        ADD CONSTRAINT schedule_no_overlap EXCLUDE USING gist
+        (unit_id WITH =, period WITH &&) WHERE (active)`);
+    }
+  });
+
+  it('db:check semântico falha quando period deixa de ser coluna gerada', async () => {
+    await requireDisposableDatabase();
+    await client.query(
+      'ALTER TABLE occupancy_spike.schedule_occupancies DROP CONSTRAINT schedule_no_overlap',
+    );
+    await client.query('ALTER TABLE occupancy_spike.schedule_occupancies DROP COLUMN period');
+    await client.query(
+      'ALTER TABLE occupancy_spike.schedule_occupancies ADD COLUMN period tstzrange',
+    );
+    await client.query(`ALTER TABLE occupancy_spike.schedule_occupancies
+      ADD CONSTRAINT schedule_no_overlap EXCLUDE USING gist
+      (unit_id WITH =, period WITH &&) WHERE (active)`);
+    try {
+      const result = spawnSync(process.execPath, ['scripts/check-schema.mjs'], {
+        cwd: fileURLToPath(new URL('../..', import.meta.url)),
+        env: process.env,
+        encoding: 'utf8',
+        timeout: 10_000,
+      });
+      expect(result.status).not.toBe(0);
+      expect(`${result.stderr}${result.stdout}`).toMatch(/período tstzrange gerado/);
+    } finally {
+      await client.query(
+        'ALTER TABLE occupancy_spike.schedule_occupancies DROP CONSTRAINT schedule_no_overlap',
+      );
+      await client.query('ALTER TABLE occupancy_spike.schedule_occupancies DROP COLUMN period');
+      await client.query(`ALTER TABLE occupancy_spike.schedule_occupancies ADD COLUMN period
+        tstzrange GENERATED ALWAYS AS (tstzrange(start_at, end_at, '[)')) STORED`);
+      await client.query(`ALTER TABLE occupancy_spike.schedule_occupancies
+        ADD CONSTRAINT schedule_no_overlap EXCLUDE USING gist
+        (unit_id WITH =, period WITH &&) WHERE (active)`);
+    }
   });
 });

@@ -5,7 +5,7 @@ export default function ThemePreview() {
     <main className="shell preview">
       <a href="/">← ArenaHub</a>
       <h1>Componentes do tema</h1>
-      <p>Prévia técnica da identidade LumixEngine.</p>
+      <p>Prévia técnica da identidade LumixEngine · dados fictícios.</p>
       <div className="preview-grid">
         <Card>
           <h2>Ações e campos</h2>

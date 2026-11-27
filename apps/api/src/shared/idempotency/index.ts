@@ -21,10 +21,12 @@ export type IdempotencyInput = {
 export type StoredResponse = { status: number; body: unknown };
 
 export class IdempotencyError extends Error {
+  readonly retryAfterSeconds?: number;
   constructor(
     readonly code: 'VALIDATION_FAILED' | 'IDEMPOTENCY_KEY_REUSED' | 'IDEMPOTENCY_IN_PROGRESS',
   ) {
     super(code);
+    if (code === 'IDEMPOTENCY_IN_PROGRESS') this.retryAfterSeconds = 1;
   }
 }
 
@@ -77,7 +79,7 @@ export async function executeIdempotent(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query("SET LOCAL lock_timeout = '2s'");
+    await client.query("SET LOCAL lock_timeout = '5s'");
     const inserted = await client.query(
       `INSERT INTO occupancy_spike.idempotency_records
        (id, organization_id, user_id, key, method, route, path_params, request_hash,
@@ -124,6 +126,7 @@ export async function executeIdempotent(
       await client.query('COMMIT');
       return { status: row.response_status, body: row.response_body };
     }
+    await client.query('SET LOCAL lock_timeout = DEFAULT');
     const response = await effect(client);
     if (!Number.isInteger(response.status) || response.status < 200 || response.status > 499) {
       throw new IdempotencyError('VALIDATION_FAILED');

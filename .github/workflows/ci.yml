@@ -31,5 +31,8 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm test:integration
+      - name: Verify Docker engine for Testcontainers and restart tests
+        run: docker info --format '{{.ServerVersion}}'
+      - name: Integration and db:check on disposable PostgreSQL
+        run: pnpm test:integration
       - run: pnpm build

@@ -26,10 +26,14 @@ afterAll(async () => {
 describe('worker PostgreSQL', () => {
   it('falha na inicialização quando PostgreSQL está indisponível', async () => {
     await expect(
-      startWorker('postgresql://unused:unused@127.0.0.1:1/unused', {
-        info: () => undefined,
-        error: () => undefined,
-      }),
+      startWorker(
+        'postgresql://unused:unused@127.0.0.1:1/unused',
+        {
+          info: () => undefined,
+          error: () => undefined,
+        },
+        { startAttempts: 1 },
+      ),
     ).rejects.toThrow();
   }, 15_000);
 
@@ -103,6 +107,28 @@ describe('worker PostgreSQL', () => {
       await boss.stop();
     }
   }, 20_000);
+
+  it('mantém job definitivamente falho identificável', async () => {
+    const queue = 'arena.failed';
+    const boss = new PgBoss({ connectionString: databaseUrl, schema: 'arena_jobs' });
+    try {
+      await boss.start();
+      await boss.createQueue(queue);
+      await boss.work(queue, { pollingIntervalSeconds: 0.5 }, async () => {
+        throw new Error('falha sintética terminal');
+      });
+      const id = await boss.send(queue, { synthetic: true }, { retryLimit: 0 });
+      if (!id) throw new Error('Job não enfileirado');
+      let state: string | undefined;
+      for (let attempt = 0; attempt < 60 && state !== 'failed'; attempt++) {
+        state = (await boss.getJobById(queue, id))?.state;
+        if (state !== 'failed') await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      expect(state).toBe('failed');
+    } finally {
+      await boss.stop();
+    }
+  }, 15_000);
 
   it('dois workers concorrentes não duplicam jobs sintéticos', async () => {
     const queue = 'arena.concurrent';

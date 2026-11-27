@@ -19,7 +19,7 @@ O projeto está na Fase 1. `apps/api/prisma` contém provas técnicas no schema 
 - Toda tabela tenant tem `organization_id NOT NULL`; toda relação entre dados tenant usa FK composta.
 - O `organization_id` vem do `TenantContext` resolvido no backend, nunca do corpo da requisição.
 - `forTenant(ctx)` é uma ajuda para o programador, **não uma barreira de segurança**. Cada repository aplica filtro explícito; SQL manual, views e agregações exigem o tenant como parâmetro.
-- Teste leitura, alteração e referência entre arenas em cada endpoint. Cubra também `connect`, `upsert`, operações aninhadas, transações, SQL manual, views e agregações. Respostas de recurso de outra arena são `404`; listas não incluem linhas da outra arena.
+- Teste leitura e regressão, alteração e referência entre arenas em cada endpoint. Cubra também `connect`, `upsert`, operações aninhadas, transações, SQL manual, views e agregações. Respostas de recurso de outra arena são `404`; listas não incluem linhas da outra arena.
 - Revalide membership e capacidades em cada requisição. Remover membership de uma arena não revoga a sessão global nem o acesso às outras arenas.
 - Reavalie RLS no ADR-002 após o spike de isolamento e antes do piloto se algum caminho de acesso não ficar demonstravelmente seguro.
 
