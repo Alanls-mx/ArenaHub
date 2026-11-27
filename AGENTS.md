@@ -4,7 +4,7 @@
 
 SaaS multi-tenant para gestão de arenas. Leia `docs/AI_CONTEXT.md` e a seção pertinente de `docs/ARENAHUB_MASTER_V3.2.md` antes de alterar comportamento. A especificação descreve o produto; o código e os testes mostram o estado implementado. Registre decisões novas em `docs/decisions/`.
 
-O projeto está na Fase 1. `apps/api/prisma` contém provas técnicas no schema PostgreSQL `occupancy_spike` (ocupação e idempotência); suas tabelas não são o modelo final de produção. `pg-boss` administra `arena_jobs`. Veja `docs/PHASE1_GATE.md` para o estado real.
+O projeto está na Fase 2 de identidade e acesso (ADR-010). `apps/api/prisma` contém provas técnicas no schema PostgreSQL `occupancy_spike` (ocupação e idempotência); suas tabelas não são o modelo final de produção. `pg-boss` administra `arena_jobs`. Veja `docs/PHASE1_GATE.md` para o estado real.
 
 ## Estrutura e comandos existentes
 
@@ -38,7 +38,7 @@ O projeto está na Fase 1. `apps/api/prisma` contém provas técnicas no schema 
 - Uma cobrança substituta aponta `replaces_charge_id` para a anterior. Índices parciais permitem histórico de anuladas e no máximo uma cobrança ativa por vínculo lógico. O job mensal verifica também cobranças anuladas e não recria a competência automaticamente.
 - Alocações usam `customer_id` e FKs triplas para garantir que pagamento e cobrança pertencem ao mesmo cliente. Trave pagamento e cobrança antes de verificar saldos.
 - `payment_balances` agrega alocações e devoluções separadamente para evitar multiplicação de linhas.
-- Funcionário só vê cobranças abertas do cliente atendido, não pendências globais. Ao marcar no-show, executa a taxa configurada; apenas Admin+ altera ou dispensa com motivo.
+- Funcionário só vê cobranças abertas do cliente atendido, não pendências globais. No-show segue a versão da política central da plataforma. As condições financeiras aguardam definição.
 
 ## API, autenticação e Web
 

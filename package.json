@@ -13,7 +13,11 @@
     "db:migrate": "pnpm --filter @arenahub/api db:migrate",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "org:create": "pnpm --filter @arenahub/api org:create",
+    "theme:check": "node --import ./apps/api/node_modules/tsx/dist/loader.mjs apps/api/scripts/theme.ts check",
+    "theme:publish": "node --import ./apps/api/node_modules/tsx/dist/loader.mjs apps/api/scripts/theme.ts publish",
+    "db:seed": "pnpm --filter @arenahub/api db:seed"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

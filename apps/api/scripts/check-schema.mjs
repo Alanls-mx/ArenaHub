@@ -56,6 +56,17 @@ try {
     /tstzrange\(start_at, end_at, '\[\)'/,
     'período semiaberto',
   );
+  const foreignKeys = await client.query(
+    "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='arena_identity.membership_roles'::regclass AND contype='f'",
+  );
+  for (const fields of ['organization_id, user_id', 'organization_id, role_id']) {
+    if (!foreignKeys.rows.some((row) => row.definition.startsWith('FOREIGN KEY (' + fields + ')')))
+      throw Error('FK de atribuição ausente');
+  }
+  const catalog = await client.query('SELECT code FROM arena_identity.permissions ORDER BY code');
+  const { permissionCodes } = await import('@arenahub/contracts');
+  if (catalog.rows.map((r) => r.code).join() !== [...permissionCodes].sort().join())
+    throw Error('Catálogo de capabilities divergente');
   console.log('Garantias SQL do schema experimental verificadas.');
 } finally {
   await client.end().catch(() => undefined);

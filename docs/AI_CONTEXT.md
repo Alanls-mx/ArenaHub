@@ -1,6 +1,6 @@
 # Contexto rápido
 
-O ArenaHub é um SaaS multi-tenant para gestão de arenas esportivas. O MVP web cobre estrutura física, agenda, mensalistas, clientes e recebimentos. API Fastify e Web Next.js compartilham contratos Zod; PostgreSQL é a fonte da verdade. A Fase 1 técnica está em andamento: ocupação, idempotência, isolamento tenant, RLS experimental e recuperação do worker foram testados em bancos descartáveis, mas o modelo de domínio ainda não existe. O gate completo está em `docs/PHASE1_GATE.md`. A recuperação local do worker após reinício completo do PostgreSQL passou na Fase 1.2; CI remoto e entrevistas continuam pendentes.
+O ArenaHub é um SaaS multi-tenant. A Fase 1 foi integrada e a Fase 2 implementa identidade, sessões e administração com dados reais. [ADR-010](decisions/ADR-010-product-and-access.md) e [gate local](PHASE2_GATE.md) orientam a continuidade. Agenda, mensalidades e financeiro estão planejados.
 
 | Área                       | Local                          |
 | -------------------------- | ------------------------------ |
