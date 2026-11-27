@@ -88,6 +88,8 @@ export async function startWorker(
     if (options.signal?.aborted) throw new Error('Worker startup cancelled');
     await boss.createQueue(demoQueue);
     await boss.createQueue(cleanupQueue);
+    const initiallyDeleted = await cleanExpiredIdempotency(pool);
+    log.info({ deleted: initiallyDeleted }, 'startup idempotency cleanup completed');
     await boss.work(demoQueue, async (jobs) => {
       for (const job of jobs) log.info({ jobId: job.id }, 'demo job completed');
     });

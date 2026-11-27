@@ -36,7 +36,7 @@ export function formatBRL(value: Cents): string {
     Number(absolute / 100n),
   );
   const fraction = String(absolute % 100n).padStart(2, '0');
-  return `${negative ? '-R$' : 'R$'} ${whole},${fraction}`;
+  return `${negative ? '-R$' : 'R$'}\u00a0${whole},${fraction}`;
 }
 
 export function serialize(value: Cents): number {

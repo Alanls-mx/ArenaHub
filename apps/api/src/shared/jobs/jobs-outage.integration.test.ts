@@ -188,6 +188,10 @@ describe('reinício completo de PostgreSQL descartável', () => {
       .start();
     const url = container.getConnectionUri();
     const id = container.getId();
+    await query(
+      url,
+      'CREATE SCHEMA occupancy_spike; CREATE TABLE occupancy_spike.idempotency_records (id uuid PRIMARY KEY, expires_at timestamptz NOT NULL)',
+    );
     const completed: string[] = [];
     const logErrors: string[] = [];
     const logInfos: string[] = [];

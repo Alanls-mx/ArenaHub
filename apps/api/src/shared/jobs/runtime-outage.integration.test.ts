@@ -1,9 +1,11 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { Client } from 'pg';
+import { PgBoss } from 'pg-boss';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { requireDisposableDatabase } from '../../__tests__/disposable-database.js';
 
@@ -87,6 +89,15 @@ async function stop(runtime: Runtime) {
   );
 }
 
+async function docker(action: 'start' | 'stop', id: string) {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  await promisify(execFile)('docker', action === 'stop' ? ['stop', '-t', '0', id] : ['start', id], {
+    windowsHide: true,
+    timeout: 15_000,
+  });
+}
+
 async function readiness(): Promise<number> {
   try {
     const response = await fetch(`http://127.0.0.1:${apiPort}/api/v1/health/ready`, {
@@ -111,6 +122,26 @@ beforeAll(async () => {
     .withStartupTimeout(120_000)
     .start();
   databaseUrl = container.getConnectionUri();
+  const migrationDirs = [
+    '20261126201305_occupancy_spike',
+    '20261126203000_align_occupancy_fk',
+    '20261126210000_idempotency_spike',
+  ];
+  const admin = new Client({ connectionString: databaseUrl });
+  await admin.connect();
+  try {
+    await admin.query('CREATE SCHEMA occupancy_spike');
+    await admin.query('SET search_path TO occupancy_spike');
+    for (const migration of migrationDirs) {
+      const sql = await readFile(
+        new URL(`../../../prisma/migrations/${migration}/migration.sql`, import.meta.url),
+        'utf8',
+      );
+      await admin.query(sql);
+    }
+  } finally {
+    await admin.end();
+  }
 }, 120_000);
 
 afterAll(async () => {
@@ -135,4 +166,115 @@ describe('real runtime PostgreSQL outage', () => {
       await stop(api);
     }
   }, 90_000);
+
+  it('worker real sobrevê pool de limpeza ocioso, retoma jobs sem duplicação', async () => {
+    const worker = start('worker');
+    const producer = new PgBoss({ connectionString: databaseUrl, schema: 'arena_jobs' });
+    const producerErrors: string[] = [];
+    producer.on('error', (error) => producerErrors.push(error.message));
+    try {
+      await producer.start();
+      await until(() => {
+        if (worker.exit) throw new Error(`worker exit: ${worker.logs.join('')}`);
+        return Promise.resolve(
+          worker.logs.join('').includes('startup idempotency cleanup completed'),
+        );
+      }, Boolean);
+      await until(
+        () => Promise.resolve(worker.logs.join('').includes('worker ready to consume jobs')),
+        Boolean,
+      );
+      const idle = await query<{ total: number }>(
+        "SELECT count(*)::int AS total FROM pg_stat_activity WHERE datname=current_database() AND state='idle' AND application_name='arenahub-worker-cleanup'",
+      );
+      expect(idle[0]?.total).toBeGreaterThanOrEqual(1);
+      const first = await producer.send('arena.demo', { synthetic: true });
+      expect(first).toBeTruthy();
+      await until(() => Promise.resolve(worker.logs.join('').includes(String(first))), Boolean);
+
+      await docker('stop', container.getId());
+      await until(
+        () =>
+          Promise.resolve(
+            worker.logs.join('').includes('idle PostgreSQL cleanup connection failed'),
+          ),
+        Boolean,
+      );
+      expect(worker.exit, worker.logs.join('')).toBeUndefined();
+      await docker('start', container.getId());
+      await until(
+        () =>
+          Promise.resolve(worker.logs.join('').split('worker ready to consume jobs').length - 1),
+        (readyTransitions) => readyTransitions >= 2,
+      );
+      const second = await producer.send('arena.demo', { synthetic: true });
+      expect(second).toBeTruthy();
+      await until(() => Promise.resolve(worker.logs.join('').includes(String(second))), Boolean);
+      expect(worker.logs.join('').split(String(first)).length - 1).toBe(1);
+      expect(worker.logs.join('').split(String(second)).length - 1).toBe(1);
+      expect(producerErrors.length).toBeGreaterThan(0);
+    } finally {
+      await producer.stop().catch(() => undefined);
+      await stop(worker);
+    }
+  }, 120_000);
+
+  it('API e worker reais recuperam simultaneamente; shutdown durante outage termina', async () => {
+    const api = start('server');
+    const worker = start('worker');
+    const producer = new PgBoss({ connectionString: databaseUrl, schema: 'arena_jobs' });
+    producer.on('error', () => undefined);
+    try {
+      await producer.start();
+      await until(readiness, (status) => status === 200);
+      await until(() => {
+        if (worker.exit) throw new Error(`worker exit: ${worker.logs.join('')}`);
+        return Promise.resolve(
+          worker.logs.join('').includes('startup idempotency cleanup completed'),
+        );
+      }, Boolean);
+      await docker('stop', container.getId());
+      await until(readiness, (status) => status === 503);
+      await until(
+        () =>
+          Promise.resolve(
+            worker.logs.join('').includes('idle PostgreSQL cleanup connection failed'),
+          ),
+        Boolean,
+      );
+      expect(api.exit).toBeUndefined();
+      expect(worker.exit).toBeUndefined();
+      await docker('start', container.getId());
+      await until(readiness, (status) => status === 200);
+      const recoveredJob = await producer.send('arena.demo', { synthetic: true });
+      expect(recoveredJob).toBeTruthy();
+      await until(
+        () => Promise.resolve(worker.logs.join('').includes(String(recoveredJob))),
+        Boolean,
+      );
+      await producer.stop();
+      await docker('stop', container.getId());
+      await until(readiness, (status) => status === 503);
+      const stoppedAt = Date.now();
+      await stop(api);
+      await stop(worker);
+      expect(Date.now() - stoppedAt).toBeLessThan(20_000);
+      expect(api.exit).toBeDefined();
+      expect(worker.exit).toBeDefined();
+      await docker('start', container.getId());
+      await until(
+        () => Promise.resolve(api.exit),
+        (exit) => exit !== undefined,
+      );
+      await until(
+        () => Promise.resolve(worker.exit),
+        (exit) => exit !== undefined,
+      );
+    } finally {
+      await producer.stop().catch(() => undefined);
+      if (!api.exit) await stop(api);
+      if (!worker.exit) await stop(worker);
+      await docker('start', container.getId()).catch(() => undefined);
+    }
+  }, 120_000);
 });
