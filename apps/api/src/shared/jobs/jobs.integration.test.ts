@@ -150,13 +150,18 @@ describe('worker PostgreSQL', () => {
       const ids = await Promise.all(
         Array.from({ length: 6 }, (_, index) => bosses[0]!.send(queue, { synthetic: index })),
       );
-      for (let attempt = 0; attempt < 100 && seen.length < ids.length; attempt++) {
+      for (let attempt = 0; attempt < 300 && seen.length < ids.length; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
-      expect(seen.length).toBe(ids.length);
+      const states = await Promise.all(
+        ids.map(async (id) => (id ? (await bosses[0]!.getJobById(queue, id))?.state : null)),
+      );
+      expect(seen.length, `seen=${JSON.stringify(seen)} jobs=${JSON.stringify(states)}`).toBe(
+        ids.length,
+      );
       expect(new Set(seen).size).toBe(ids.length);
     } finally {
       await Promise.all(bosses.map((boss) => boss.stop()));
     }
-  }, 20_000);
+  }, 30_000);
 });

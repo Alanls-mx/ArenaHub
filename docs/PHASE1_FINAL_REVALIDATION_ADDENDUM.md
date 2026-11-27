@@ -31,6 +31,12 @@ Após a liberação, o teste verifica resposta bem-sucedida, valor de domínio i
 
 O encerramento anterior do fork Vitest com código Windows `0xC0000409` permanece sem causa comprovada. A consulta local de eventos não encontrou evento de WER/Application Error correspondente; duas execuções completas posteriores (default e serial) passaram. Não há base para atribuir o episódio a uma dependência ou tecnologia específica. CI do GitHub ainda precisa confirmar o workflow Linux.
 
+### CI remoto e correção do teste concorrente
+
+As duas execuções do workflow no SHA `4fba73ba52ceabbb35d5a7a791fea0eb64cb2636` falharam na mesma assertion de `jobs.integration.test.ts`: esperava seis jobs observados, mas após 5 s havia quatro. `db:check`, A2 e os três cenários de outage passaram no Linux; o build foi pulado porque a etapa de integração falhou. O teste concorrente isolado local completou os seis jobs em 6,11 s, confirmando que seu limite interno antigo (5 s) era menor que o tempo observado com o polling padrão de 2 s.
+
+A correção somente aumentou a espera interna para no máximo 15 s e o timeout total do teste para 30 s, manteve as assertions de seis jobs e IDs distintos e adicionou estados persistidos à mensagem de falha. A execução isolada e a suíte local completa (53/53) passaram depois da mudança. **Reexecução de CI para o novo SHA ainda pendente; o CI remoto não está aprovado até essa confirmação.**
+
 ## Estado do gate
 
 **A implementação técnica está aprovada localmente; o gate integral da Fase 1 continua aberto.** Permanecem pendentes: workflow remoto deste SHA, 3 a 5 entrevistas com proprietários, decisões comerciais resultantes e consolidação final de `docs/DATABASE.md` e ERD. O modelo definitivo não deve ser congelado antes das entrevistas. `occupancy_spike` permanece experimental e a Fase 2 não foi iniciada.
