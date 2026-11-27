@@ -1,6 +1,6 @@
 # Gate da Fase 3 — estrutura operacional
 
-Estado: **Fase 3 aprovada localmente; CI remoto pendente**. Não houve merge ou deploy.
+Estado: **Fase 3 tecnicamente aprovada**. Os gates locais e o CI remoto Linux passaram. O PR permanece em rascunho; não houve merge ou deploy.
 
 ## Mapa do sistema implementado
 
@@ -8,13 +8,13 @@ Next.js (`access-client.tsx` e `operations-client.tsx`) envia formulários e sim
 
 ## Critérios e evidências
 
-| Critério                                               | Estado   | Evidência                                                                                                                                      |
-| ------------------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Nove entidades, migration aditiva e Prisma sem drift   | Aprovado | `20261127014000_operational_structure`, `identity.prisma`; `db:check` em PostgreSQL 16 descartável sem drift e com constraints SQL verificadas |
-| CRUD e isolamento, RBAC, composição, horário e preço   | Aprovado | `structure.integration.test.ts`, `rules.test.ts`; 64/64 testes de integração e 23/23 unitários na última execução                              |
-| Cenário integral pela interface em menos de 30 minutos | Aprovado | `visual-phase3.ts`: 5 s, dados operacionais persistidos pela interface; [capturas](evidence/phase3/) em 1440, 768 e 390 px                     |
-| Gates locais completos                                 | Aprovado | lint, format, typecheck, OpenAPI, unitários (23/23), integração (64/64), build e diff                                                          |
-| CI remoto                                              | Pendente | Requisito da aprovação definitiva na branch                                                                                                    |
+| Critério                                               | Estado   | Evidência                                                                                                                                                                                                                                  |
+| ------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Nove entidades, migration aditiva e Prisma sem drift   | Aprovado | `20261127014000_operational_structure`, `identity.prisma`; `db:check` em PostgreSQL 16 descartável sem drift e com constraints SQL verificadas                                                                                             |
+| CRUD e isolamento, RBAC, composição, horário e preço   | Aprovado | `structure.integration.test.ts`, `rules.test.ts`; 64/64 testes de integração e 23/23 unitários na última execução                                                                                                                          |
+| Cenário integral pela interface em menos de 30 minutos | Aprovado | `visual-phase3.ts`: 5 s, dados operacionais persistidos pela interface; [capturas](evidence/phase3/) em 1440, 768 e 390 px                                                                                                                 |
+| Gates locais completos                                 | Aprovado | lint, format, typecheck, OpenAPI, unitários (23/23), integração (64/64), build e diff                                                                                                                                                      |
+| CI remoto                                              | Aprovado | SHA `492826b0ec38a8dab54c8ed058fb96dba9af55d4`: [push](https://github.com/Alanls-mx/ArenaHub/actions/runs/46078020598) e [PR](https://github.com/Alanls-mx/ArenaHub/actions/runs/46078086613), com integração PostgreSQL e build aprovados |
 
 ## Limites
 

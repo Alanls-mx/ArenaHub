@@ -1045,7 +1045,7 @@ Ordem dentro de cada funcionalidade: contrato Zod → migration → service + te
 
 **Gate:** uma arena fictícia com campo divisível e duas quadras de beach tennis é configurada pela interface em menos de 30 minutos.
 
-**Evidência local:** cenário via Web/API/PostgreSQL concluído em 5 segundos; critérios e capturas em `PHASE3_GATE.md`. A aprovação definitiva aguarda CI remoto.
+**Evidência:** cenário via Web/API/PostgreSQL concluído em 5 segundos; critérios, capturas e CI remoto aprovados em `PHASE3_GATE.md`.
 
 ### Fase 4 — Motor de reservas (3 semanas)
 
