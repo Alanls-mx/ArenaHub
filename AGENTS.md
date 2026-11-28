@@ -27,8 +27,8 @@ As Fases 3 e 4 estão na `main`: estrutura operacional (ADR-012 e `docs/PHASE3_G
 
 - Instantes concretos usam `timestamptz`/UTC; horários comerciais são locais da organização. Conversões ficam em `apps/api/src/shared/time`.
 - Toda ocupação é escrita pelo service de agendamento; a exclusion constraint PostgreSQL é a autoridade contra sobreposição.
-- Mutações operacionais travam a organização antes do venue. Reserva e bloqueio futuros devem seguir a mesma ordem antes de ler composição, horários, exceções globais e preços ou escrever ocupações. Ao travar dois venues, use ordem crescente de ID.
-- Versões da recorrência do mesmo contrato não podem sobrepor datas; a migration final deve impor isso no banco.
+- Mutações operacionais, reservas e bloqueios travam a organização antes do venue, antes de ler composição, horários, exceções globais e preços ou escrever ocupações. Ao travar dois venues, use ordem crescente de ID.
+- Versões da recorrência do mesmo contrato não podem sobrepor datas; a migration da Fase 4 impõe isso no banco.
 - Regras de preço do mesmo venue são alteradas sob lock e revalidadas na transação para evitar corrida entre administradores.
 
 ## Financeiro
