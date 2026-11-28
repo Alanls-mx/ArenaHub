@@ -66,6 +66,17 @@ export function operationalRoutes(app: FastifyInstance, pool: Pool, options: Ide
     });
   }
   const base = '/orgs/:slug';
+  async function assertNoActiveBooking(db: PoolClient, org: string, venueId: string) {
+    if (
+      (
+        await db.query(
+          "SELECT 1 FROM reservations WHERE organization_id=$1 AND venue_id=$2 AND status IN ('PENDING','CONFIRMED') AND end_at>now() LIMIT 1",
+          [org, venueId],
+        )
+      ).rowCount
+    )
+      throw new AccessError(409, 'VENUE_UNITS_IN_USE');
+  }
   const list = (
     table: 'customers' | 'sports' | 'venues' | 'venue_units',
     cap: Capability,
@@ -347,6 +358,15 @@ export function operationalRoutes(app: FastifyInstance, pool: Pool, options: Ide
         ).rowCount
       )
         deny(409);
+      if (
+        (
+          await db.query(
+            "SELECT 1 FROM reservations WHERE organization_id=$1 AND venue_id=$2 AND sport_id IS NOT NULL AND NOT (sport_id=ANY($3::uuid[])) AND status IN ('PENDING','CONFIRMED') AND end_at>now() LIMIT 1",
+            [c.org, id, x.sportIds],
+          )
+        ).rowCount
+      )
+        throw new AccessError(409, 'VENUE_UNITS_IN_USE');
       await db.query(
         'UPDATE venues SET name=$3,default_price_per_hour_cents=$4,color=$5,sort_order=$6,updated_at=now() WHERE organization_id=$1 AND id=$2',
         [c.org, id, x.name, x.defaultPricePerHourCents, x.color, x.sortOrder],
@@ -366,6 +386,7 @@ export function operationalRoutes(app: FastifyInstance, pool: Pool, options: Ide
   app.delete(base + '/venues/:id', (r) =>
     run(r, 'venues.manage', async (db, c) => {
       const id = idOf(r);
+      await assertNoActiveBooking(db, c.org, id);
       if (
         !(
           await db.query(
@@ -392,6 +413,7 @@ export function operationalRoutes(app: FastifyInstance, pool: Pool, options: Ide
         ).rowCount
       )
         deny(404);
+      await assertNoActiveBooking(db, c.org, id);
       await validRefs(db, c, 'venue_units', x.unitIds);
       await db.query('DELETE FROM venue_unit_links WHERE organization_id=$1 AND venue_id=$2', [
         c.org,
@@ -434,6 +456,7 @@ export function operationalRoutes(app: FastifyInstance, pool: Pool, options: Ide
         ).rowCount
       )
         deny(404);
+      await assertNoActiveBooking(db, c.org, id);
       try {
         validateShifts(x.shifts);
       } catch {
@@ -467,6 +490,19 @@ export function operationalRoutes(app: FastifyInstance, pool: Pool, options: Ide
     run(r, 'hours.manage', async (db, c) => {
       const x = exceptionSchema.parse(r.body);
       if ((x.kind === 'CLOSED') !== (x.openTime === null && x.closeTime === null)) deny(400);
+      if (
+        (
+          await db.query(
+            `SELECT 1 FROM reservations r JOIN organizations o ON o.id=r.organization_id
+         WHERE r.organization_id=$1 AND ($2::uuid IS NULL OR r.venue_id=$2)
+         AND r.status IN ('PENDING','CONFIRMED') AND r.end_at>now()
+         AND (r.start_at AT TIME ZONE o.timezone)::date<=$3::date
+         AND (r.end_at AT TIME ZONE o.timezone)::date>=$3::date LIMIT 1`,
+            [c.org, x.venueId, x.date],
+          )
+        ).rowCount
+      )
+        throw new AccessError(409, 'VENUE_UNITS_IN_USE');
       if (
         x.venueId &&
         !(

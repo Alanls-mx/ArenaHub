@@ -61,13 +61,26 @@ async function main() {
     };
     delete env.DATABASE_URL;
     await run(process.execPath, [pnpmCli, 'exec', 'prisma', 'migrate', 'deploy'], env);
+    if (process.argv.includes('--introspect-identity')) {
+      await run(
+        process.execPath,
+        [pnpmCli, 'exec', 'prisma', 'db', 'pull', '--config', 'prisma.identity.config.ts'],
+        env,
+      );
+      return;
+    }
     await run(process.execPath, [pnpmCli, 'run', 'db:check'], env);
+    if (process.argv.includes('--db-check-only')) return;
     if (process.argv.includes('--visual')) {
       await run(process.execPath, ['--import', 'tsx', 'scripts/visual-identity.ts'], env);
       return;
     }
     if (process.argv.includes('--visual-phase3')) {
       await run(process.execPath, ['--import', 'tsx', 'scripts/visual-phase3.ts'], env);
+      return;
+    }
+    if (process.argv.includes('--visual-phase4')) {
+      await run(process.execPath, ['--import', 'tsx', 'scripts/visual-phase4.ts'], env);
       return;
     }
     await run(

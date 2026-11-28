@@ -4,6 +4,8 @@ import Fastify from 'fastify';
 import nodemailer from 'nodemailer';
 import { Pool } from 'pg';
 import { ZodError } from 'zod';
+import { realtimeRoutes, registerRealtimePlugin } from './booking/realtime.js';
+import { bookingRoutes } from './booking/routes.js';
 import { AccessError } from './identity/core.js';
 import { hostResolver, type TrustedProxy } from './identity/host.js';
 import { authRoutes, type Delivery } from './identity/session.js';
@@ -42,6 +44,7 @@ export function buildApp(options: {
   pool.on('error', (error: Error & { code?: string }) => {
     app.log.error({ code: error.code }, 'idle PostgreSQL readiness connection failed');
   });
+  registerRealtimePlugin(app);
   app.addHook('onClose', async () => {
     await pool.end();
   });
@@ -70,6 +73,12 @@ export function buildApp(options: {
       await authRoutes(identity, pool, { origin, deliver, hostOrganization: host.organization });
       teamRoutes(identity, pool, { origin, deliver, hostOrganization: host.organization });
       operationalRoutes(identity, pool, { origin, deliver, hostOrganization: host.organization });
+      bookingRoutes(identity, pool, { origin, deliver, hostOrganization: host.organization });
+      realtimeRoutes(identity, pool, options.databaseUrl, {
+        origin,
+        deliver,
+        hostOrganization: host.organization,
+      });
     },
     { prefix: '/api/v1' },
   );
@@ -93,28 +102,32 @@ export function buildApp(options: {
     const statusCode =
       error instanceof ZodError
         ? 400
-        : (error as { code?: string })?.code === '23505'
+        : (error as { code?: string })?.code === '23P01'
           ? 409
-          : error instanceof IdempotencyError
-            ? error.code === 'VALIDATION_FAILED'
-              ? 400
-              : 409
-            : error instanceof Error &&
-                'statusCode' in error &&
-                typeof error.statusCode === 'number'
-              ? error.statusCode
-              : 500;
+          : (error as { code?: string })?.code === '23505'
+            ? 409
+            : error instanceof IdempotencyError
+              ? error.code === 'VALIDATION_FAILED'
+                ? 400
+                : 409
+              : error instanceof Error &&
+                  'statusCode' in error &&
+                  typeof error.statusCode === 'number'
+                ? error.statusCode
+                : 500;
     const status = statusCode >= 400 && statusCode < 500 ? statusCode : 500;
     const code =
       error instanceof AccessError || error instanceof IdempotencyError
         ? error.code
         : status === 429
           ? 'RATE_LIMITED'
-          : status === 409
-            ? 'INVALID_TRANSITION'
-            : status === 500
-              ? 'INTERNAL_ERROR'
-              : 'VALIDATION_FAILED';
+          : (error as { code?: string })?.code === '23P01'
+            ? 'SLOT_UNAVAILABLE'
+            : status === 409
+              ? 'INVALID_TRANSITION'
+              : status === 500
+                ? 'INTERNAL_ERROR'
+                : 'VALIDATION_FAILED';
     const problem: ProblemDetails = {
       type: 'https://arenahub.app/errors/' + code.toLowerCase().replaceAll('_', '-'),
       title:

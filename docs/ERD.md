@@ -154,6 +154,8 @@ erDiagram
 
 ### Questões estruturais deste grupo
 
+**Estado da Fase 4:** as entidades de reservas, ocupações definitivas, bloqueios, contratos/versões/regras/exceções recorrentes, histórico, resultados comerciais e vínculo de evidência financeira foram criadas em `arena_identity` pela migration `20261127015000_booking_engine`. As entidades financeiras `charges`, `payments`, alocações e reembolsos do desenho abaixo continuam planejadas para a Fase 5. O gate de implementação está em [PHASE4_GATE](PHASE4_GATE.md).
+
 - Venue comercializável permanece separado de unidade física; confirmar que espaço divisível pertence ao MVP mesmo que a UI simples oculte unidade única.
 - `venue_id NULL` em exceção significa data fechada/especial para a arena inteira; unicidade exige `NULLS NOT DISTINCT` ou índices parciais.
 - Definir se `operating_hours` representa cada turno como linha e como horários que atravessam meia-noite são representados sem ambiguidade.

@@ -1,0 +1,16 @@
+{
+  "twoSessions": true,
+  "createdPending": true,
+  "confirmed": true,
+  "rescheduled": true,
+  "cancelledAndReleased": true,
+  "synchronizedAfterOffline": true,
+  "inPersonConfirmedAndConflictingAttemptBlocked": true,
+  "monthlyContractViaInterface": "04829762-190e-4c75-a018-98f5d660404a",
+  "firstMonthAmountCents": 30000,
+  "generatedOccurrences": 9,
+  "movedConflicts": 1,
+  "contractVersionedAndEndedViaInterface": true,
+  "automatedSeconds": 13,
+  "limitation": "Dois contextos autenticados da mesma conta, com sessões distintas; não mede tempo de operação humana."
+}

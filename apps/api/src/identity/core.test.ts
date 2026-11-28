@@ -21,6 +21,13 @@ it('limita templates ao catálogo e separa registro de recebimentos da visão gl
     'venues.read',
     'hours.read',
     'pricing.simulate',
+    'reservations.read',
+    'reservations.create',
+    'reservations.confirm',
+    'reservations.reschedule',
+    'reservations.cancel',
+    'reservations.no_show',
+    'reservations.complete',
   ]);
   expect(
     roleSchema.safeParse({ name: 'Owner', description: '', permissions: ['owner'] }).success,

@@ -24,9 +24,29 @@ Diretriz central: engenharia sólida onde erros são caros (agenda, isolamento e
 
 ### 1.2. Fora do MVP
 
-App mobile, página pública de reservas, holds, outbox, SSE/WebSocket, push, Redis, API oficial do WhatsApp, gateways adicionais, módulos Bar / Media / Events / Business, relatórios avançados, microserviços. RLS é uma decisão de segurança reavaliada antes do piloto (§4.1), não uma funcionalidade comercial.
+App mobile, página pública de reservas, holds, outbox, push, Redis, API oficial do WhatsApp, gateways adicionais, módulos Bar / Media / Events / Business, relatórios avançados, microserviços. A agenda administrativa usa WebSocket para invalidação em tempo real conforme ADR-013. RLS é uma decisão de segurança reavaliada antes do piloto (§4.1), não uma funcionalidade comercial.
 
 Cada item fora do MVP só entra com um consumidor real ou demanda comprovada no piloto.
+
+### 1.2a. Decisões oficiais da Fase 4 (28/11/2026)
+
+As decisões do fundador nesta seção prevalecem sobre trechos anteriores incompatíveis; a implementação e o gate permanecem em [PHASE4_GATE](PHASE4_GATE.md).
+
+| Decisão | Regra |
+| --- | --- |
+| D4-01 | Equipe autorizada cria reserva administrativa pendente ou confirmada; confirmação não prova pagamento. |
+| D4-02 | Reserva administrativa pendente ocupa as unidades sem expiração automática. |
+| D4-03 | Cancelamento com pelo menos 24 horas de antecedência: 0%. |
+| D4-04 | Cancelamento com menos de 24 horas: 50% do preço contratado. |
+| D4-05 | No-show identificado: obrigação total de 100%, sem duplicar obrigação já existente. |
+| D4-06 | Mensalista: conflito de uma ocorrência não invalida as outras; registrar e resolver separadamente. |
+| D4-07 | Primeiro mês: valor mensal multiplicado pelas ocorrências contratadas restantes e dividido pelo total de ocorrências contratadas no mês civil local. |
+| D4-08 | Remarcação recalcula preço e preserva valor anterior no histórico. |
+| D4-09 | Somente pagamento aprovado e validado pela integração futura pode confirmar automaticamente uma reserva elegível; operação interna idempotente. |
+| D4-10 | Agenda administrativa em tempo real usa WebSocket com `LISTEN/NOTIFY`; HTTP continua fonte de estado. |
+| D4-11 | Reserva presencial usa exatamente o motor de reservas administrativo. |
+
+Exceções comerciais e as questões sem definição ficam no [ADR-014](decisions/ADR-014-phase4-commercial-policy.md). As fronteiras de WebSocket e pagamento estão nos [ADR-013](decisions/ADR-013-phase4-realtime.md) e [ADR-015](decisions/ADR-015-phase4-payment-boundary.md).
 
 ### 1.3. O que mudou da v2.0 para a v3.0
 
@@ -1049,20 +1069,18 @@ Ordem dentro de cada funcionalidade: contrato Zod → migration → service + te
 
 ### Fase 4 — Motor de reservas (3 semanas)
 
-- [ ] Migrations: `reservations`, `reservation_history`, `schedule_occupancies` (versão final), `venue_blocks`, `recurrence_contracts`, `recurrences`, `recurrence_exceptions` (`idempotency_keys` já existe desde a Fase 1)
-- [ ] Bloqueios com ocupação e tela de manutenção (primeiro uso real da constraint final)
-- [ ] Service de ocupação: criar, remarcar, trocar venue, desativar; lock do venue compartilhado com edição de links; invariante de unidades testada
-- [ ] Criação de reserva avulsa com validações do venue, preço, histórico e idempotência
-- [ ] Mapeamento `23P01` → `SLOT_UNAVAILABLE` com detalhe do conflito
-- [ ] Máquina de estados pura em `contracts`; confirmar, cancelar, no-show
-- [ ] Endpoints `schedule` e `availability` com uma consulta por período
-- [ ] Recorrências: criação com geração imediata, savepoint por ocorrência, exceções, nova versão, encerramento; exclusion constraint de vigência; teste de rollback da ocorrência e persistência da exceção
-- [ ] Job `recurrences.generate`
-- [ ] Componente `ScheduleGrid` (dia e semana, colunas por venue, unidades divisíveis lado a lado, cores de estado fixas)
-- [ ] Telas: agenda, criar e editar reserva (com `CustomerPicker` simples), detalhe com histórico, mensalistas, alertas de conflito
-- [ ] Testes de tempo: meia-noite, virada de mês, Manaus, horário de verão hipotético
+- [x] Migration `20261127015000_booking_engine`: reservas, histórico, ocupações definitivas, bloqueios, contratos, versões, regras, exceções e idempotência definitiva em `arena_identity`; o helper experimental da Fase 1 permanece em `occupancy_spike`.
+- [x] Bloqueios com ocupação e interface de manutenção; constraint GiST em todas as unidades físicas.
+- [x] Serviço central para criar, remarcar, trocar venue e desativar ocupações; lock compartilhado da organização seguido dos locks de venue; composição verificada em banco.
+- [x] Reserva avulsa com validação de venue, preço, histórico e chave idempotente; `23P01` é mapeado a `409 SLOT_UNAVAILABLE` sem expor SQL interno.
+- [x] Estados validados em `contracts` e transições no serviço: confirmar, concluir, cancelar e no-show.
+- [x] Endpoints `agenda` e `availability` por período, com refetch após invalidação WebSocket.
+- [x] Recorrências: geração após criação e pelo worker, transação isolada por ocorrência, exceções, nova versão, encerramento e exclusion constraint de vigência; rollback e conflito testados.
+- [x] Job `recurrences.generate` em `arena_jobs`.
+- [x] Grade diária/semanal com venues, unidades divisíveis, estados, detalhes, histórico, reservas, mensalistas e alertas de conflito.
+- [x] Testes de hora local: meia-noite, virada de mês, Manaus e horário de verão em zona com transição.
 
-**Gate:** testes de concorrência (avulsa × avulsa, avulsa × bloqueio, recorrência × avulsa, campo inteiro × meia quadra) verdes; agenda semanal com 300 reservas responde em menos de 300 ms no ambiente local. Os efeitos financeiros são integrados e liberados para piloto na Fase 5.
+**Gate local em 28/11/2026:** testes de concorrência (avulsa × avulsa, avulsa × bloqueio, recorrência × avulsa, campo inteiro × meia quadra e três escritores simultâneos) verdes; agenda semanal com 300 reservas respondeu em menos de 300 ms no ambiente local. O encerramento formal depende do PR e CI remoto; efeitos financeiros definitivos permanecem na Fase 5, sem liberação de piloto financeiro nesta fase. Ver [PHASE4_GATE](PHASE4_GATE.md).
 
 ### Fase 5 — Clientes e financeiro (2,5 semanas)
 

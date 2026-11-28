@@ -1,9 +1,11 @@
 import { Pool } from 'pg';
 import { PgBoss } from 'pg-boss';
+import { generateRecurrences } from '../../booking/generate.js';
 import { cleanExpiredIdempotency } from '../idempotency/index.js';
 
 export const demoQueue = 'arena.demo';
 export const cleanupQueue = 'idempotency.cleanup';
+export const recurrenceQueue = 'recurrences.generate';
 export type WorkerStatus =
   'INITIALIZING' | 'READY' | 'DEGRADED' | 'RECOVERING' | 'STOPPING' | 'STOPPED';
 
@@ -54,9 +56,9 @@ export async function startWorker(
     const now = Date.now();
     const workers = boss
       .getWipData()
-      .filter((worker) => worker.name === demoQueue || worker.name === cleanupQueue);
+      .filter((worker) => [demoQueue, cleanupQueue, recurrenceQueue].includes(worker.name));
     const ready =
-      workers.length === 2 &&
+      workers.length === 3 &&
       workers.every(
         (worker) =>
           worker.state === 'active' &&
@@ -88,6 +90,7 @@ export async function startWorker(
     if (options.signal?.aborted) throw new Error('Worker startup cancelled');
     await boss.createQueue(demoQueue);
     await boss.createQueue(cleanupQueue);
+    await boss.createQueue(recurrenceQueue);
     const initiallyDeleted = await cleanExpiredIdempotency(pool);
     log.info({ deleted: initiallyDeleted }, 'startup idempotency cleanup completed');
     await boss.work(demoQueue, async (jobs) => {
@@ -95,9 +98,15 @@ export async function startWorker(
     });
     await boss.work(cleanupQueue, async () => {
       const deleted = await cleanExpiredIdempotency(pool);
+      await pool.query('DELETE FROM arena_identity.idempotency_keys WHERE expires_at<=now()');
       log.info({ deleted }, 'expired idempotency records removed');
     });
+    await boss.work(recurrenceQueue, async () => {
+      const result = await generateRecurrences(pool);
+      log.info(result, 'recurrence horizon materialized');
+    });
     await boss.schedule(cleanupQueue, '0 * * * *');
+    await boss.schedule(recurrenceQueue, '0 * * * *');
     monitor = setInterval(refreshState, 1_000);
     monitor.unref();
     return {

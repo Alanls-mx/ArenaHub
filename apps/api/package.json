@@ -19,14 +19,15 @@
     "org:create": "node --env-file-if-exists=../../.env --import tsx scripts/org-create.ts",
     "theme:check": "node --import tsx scripts/theme.ts check",
     "theme:publish": "node --import tsx scripts/theme.ts publish",
-    "openapi:generate": "node scripts/openapi-phase3.mjs",
-    "openapi:check": "node scripts/openapi-phase3.mjs --check",
+    "openapi:generate": "node scripts/openapi-phase3.mjs && node scripts/openapi-phase4.mjs",
+    "openapi:check": "node scripts/openapi-phase3.mjs --check && node scripts/openapi-phase4.mjs --check",
     "db:seed": "node --env-file=../../.env --import tsx scripts/seed-local.ts"
   },
   "dependencies": {
     "@arenahub/contracts": "workspace:*",
     "@fastify/helmet": "^13.2.0",
     "@fastify/rate-limit": "^11.3.0",
+    "@fastify/websocket": "^11.3.7",
     "@js-temporal/polyfill": "0.5.1",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "^7.10.1",
@@ -40,10 +41,12 @@
   "devDependencies": {
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.2",
     "dotenv": "^18.0.10",
     "playwright-core": "^1.65.1",
     "prisma": "^7.10.1",
     "testcontainers": "12.2.2",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "ws": "^8.23.0"
   }
 }

@@ -1,0 +1,7 @@
+# Ciclo de vida da reserva
+
+`POST /reservations` valida sessão, tenant, capability, `Idempotency-Key`, cliente, venue/modalidade, horário, unidades, preço e ocupação em uma transação. O backend deriva o preço da função pura da Fase 3, guarda snapshot e cria uma ocupação por unidade. `PENDING` e `CONFIRMED` ocupam imediatamente. O PostgreSQL arbitra colisões pelo índice de exclusão GiST sobre `tstzrange` semiaberto `[)`. O retorno `409 SLOT_UNAVAILABLE` não grava efeito parcial.
+
+Transições são operações específicas: pendente → confirmada; confirmada → concluída somente após o fim; pendente/confirmada → cancelada ou no-show conforme política. Cancelamento e no-show desativam ocupações, preservando reserva, histórico e resultado comercial. A Web pede `cancellation-preview` antes de confirmar a operação. Remarcação trava venues em ordem crescente, revalida versão e destino, recalcula preço e substitui ocupações na mesma transação; uma falha preserva o horário e as ocupações anteriores. `reschedule-preview` mostra preço anterior, novo preço e diferença, mas a mutação revalida tudo. Bloqueios usam as mesmas unidades e constraint.
+
+Histórico e auditoria são anexados à mutação. O resultado idempotente é gravado na mesma transação; a notificação de agenda é visível apenas após commit. A futura Fase 5 poderá consumir o ID de resultado comercial e criar cobranças reais. Nenhum pagamento ou reembolso é criado pelo motor da Fase 4.
