@@ -234,7 +234,7 @@ export default function Operations({ org, csrf }: { org: string; csrf: string })
     { key: 'modalidades', label: 'Modalidades', cap: 'sports.read' },
     { key: 'horarios', label: 'Horários', cap: 'hours.read' },
     { key: 'calendario', label: 'Exceções', cap: 'hours.read' },
-    { key: 'precos', label: 'Preços', cap: 'pricing.read' },
+    { key: 'precos', label: 'Preços' },
     { key: 'clientes', label: 'Clientes', cap: 'customers.read' },
     { key: 'dominios', label: 'Domínios', cap: 'domains.manage' },
   ];
@@ -294,7 +294,11 @@ export default function Operations({ org, csrf }: { org: string; csrf: string })
       </div>
       <nav className="operations-nav" aria-label="Administração da arena">
         {nav
-          .filter((n) => !n.cap || can(n.cap))
+          .filter(
+            (n) =>
+              (n.key === 'precos' && (can('pricing.read') || can('pricing.simulate'))) ||
+              (n.key !== 'precos' && (!n.cap || can(n.cap))),
+          )
           .map((n) => (
             <button
               key={n.key}
@@ -1119,61 +1123,63 @@ export default function Operations({ org, csrf }: { org: string; csrf: string })
           )}
           {panel === 'precos' && (
             <div className="op-grid">
-              <div className="op-card">
-                <h2>Regras de preço</h2>
-                <p>
-                  Prioridade: data específica → modalidade e dia → dia → preço padrão do espaço.
-                </p>
-                {rules
-                  .filter((r) => !r.archived_at)
-                  .map((r) => (
-                    <article className="op-row" key={r.id}>
-                      <div>
-                        <strong>
-                          {money(r.price_per_hour_cents)}/h ·{' '}
-                          {venues.find((v) => v.id === r.venue_id)?.name}
-                        </strong>
-                        <small>
-                          {r.specific_date || weekdays[r.weekday ?? 0]} ·{' '}
-                          {minuteText(r.start_minute)}–{minuteText(r.end_minute)}{' '}
-                          {r.sport_id && '· ' + sports.find((s) => s.id === r.sport_id)?.name}
-                        </small>
-                      </div>
-                      {can('pricing.manage') && (
-                        <div className="op-actions">
-                          <button onClick={() => setEditingRule(r)}>Editar</button>
-                          <button
-                            onClick={() => {
-                              if (confirm('Arquivar regra?'))
-                                void save('/pricing-rules/' + r.id, 'DELETE', null);
-                            }}
-                          >
-                            Arquivar
-                          </button>
+              {can('pricing.read') && (
+                <div className="op-card">
+                  <h2>Regras de preço</h2>
+                  <p>
+                    Prioridade: data específica → modalidade e dia → dia → preço padrão do espaço.
+                  </p>
+                  {rules
+                    .filter((r) => !r.archived_at)
+                    .map((r) => (
+                      <article className="op-row" key={r.id}>
+                        <div>
+                          <strong>
+                            {money(r.price_per_hour_cents)}/h ·{' '}
+                            {venues.find((v) => v.id === r.venue_id)?.name}
+                          </strong>
+                          <small>
+                            {r.specific_date || weekdays[r.weekday ?? 0]} ·{' '}
+                            {minuteText(r.start_minute)}–{minuteText(r.end_minute)}{' '}
+                            {r.sport_id && '· ' + sports.find((s) => s.id === r.sport_id)?.name}
+                          </small>
                         </div>
-                      )}
-                    </article>
-                  ))}
-                {!rules.some((r) => !r.archived_at) && (
-                  <p>Sem regras. O preço padrão do espaço ainda pode ser simulado.</p>
-                )}
-                {rules.some((r) => r.archived_at) && (
-                  <details>
-                    <summary>
-                      Histórico de regras arquivadas ({rules.filter((r) => r.archived_at).length})
-                    </summary>
-                    {rules
-                      .filter((r) => r.archived_at)
-                      .map((r) => (
-                        <p key={r.id}>
-                          {venues.find((v) => v.id === r.venue_id)?.name ?? 'Espaço arquivado'} ·{' '}
-                          {money(r.price_per_hour_cents)}/h ·{' '}
-                          {r.specific_date ?? weekdays[r.weekday ?? 0]}
-                        </p>
-                      ))}
-                  </details>
-                )}
-              </div>
+                        {can('pricing.manage') && (
+                          <div className="op-actions">
+                            <button onClick={() => setEditingRule(r)}>Editar</button>
+                            <button
+                              onClick={() => {
+                                if (confirm('Arquivar regra?'))
+                                  void save('/pricing-rules/' + r.id, 'DELETE', null);
+                              }}
+                            >
+                              Arquivar
+                            </button>
+                          </div>
+                        )}
+                      </article>
+                    ))}
+                  {!rules.some((r) => !r.archived_at) && (
+                    <p>Sem regras. O preço padrão do espaço ainda pode ser simulado.</p>
+                  )}
+                  {rules.some((r) => r.archived_at) && (
+                    <details>
+                      <summary>
+                        Histórico de regras arquivadas ({rules.filter((r) => r.archived_at).length})
+                      </summary>
+                      {rules
+                        .filter((r) => r.archived_at)
+                        .map((r) => (
+                          <p key={r.id}>
+                            {venues.find((v) => v.id === r.venue_id)?.name ?? 'Espaço arquivado'} ·{' '}
+                            {money(r.price_per_hour_cents)}/h ·{' '}
+                            {r.specific_date ?? weekdays[r.weekday ?? 0]}
+                          </p>
+                        ))}
+                    </details>
+                  )}
+                </div>
+              )}
               <div>
                 {can('pricing.manage') && (
                   <div className="op-card">

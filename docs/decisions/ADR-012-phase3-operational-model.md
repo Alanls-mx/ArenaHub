@@ -12,6 +12,6 @@ Capacidades novas entram no catálogo sem alterar cargos já persistidos. Novas 
 
 ## Fluxo e integração
 
-Web autenticada → `/api/v1/orgs/:slug` → sessão/CSRF, host e membership → capability → validação do contrato → transação e lock → SQL filtrado por organização → auditoria → resposta seletiva. A futura Fase 4 deverá adquirir o mesmo lock do venue antes de consultar ou alterar composição/ocupações; alteração de composição com reservas ativas exigirá bloqueio transacional, ainda não aplicável nesta fase.
+Web autenticada → `/api/v1/orgs/:slug` → sessão/CSRF, host e membership → capability → validação do contrato → transação e lock → SQL filtrado por organização → auditoria → resposta seletiva. As mutações da Fase 3 travam primeiro a organização e depois o venue. A futura Fase 4 deverá seguir essa ordem antes de consultar composição, horários, exceções globais e preços ou escrever ocupações; se envolver dois venues, travá-los em ordem crescente de ID. Alteração de composição com reservas ativas exigirá bloqueio transacional, ainda não aplicável nesta fase.
 
 Não há tabelas definitivas de reserva, cobrança ou pagamento neste ADR. Verificação DNS e TLS de domínios próprios continuam fora da Fase 3.

@@ -16,8 +16,6 @@ A migration `20261127013000_organization_domains` acrescenta `organization_domai
 
 As verificações semânticas do spike continuam separadas. As tabelas da fila são administradas por pg-boss. Identidade usa o pool da API com transações e search_path local. RLS continua experimental conforme ADR-002.
 
-## Modelo comercial planejado
-
 ## Implementado na Fase 3 — estrutura operacional
 
 A migration `20261127014000_operational_structure` acrescenta ao schema `arena_identity` as nove entidades `customers`, `sports`, `venues`, `venue_units`, `venue_unit_links`, `venue_sports`, `operating_hours`, `calendar_exceptions` e `pricing_rules`. O arquivo `identity.prisma` espelha as colunas e relações para detectar drift; CHECKs, índices de expressão, `UNIQUE NULLS NOT DISTINCT` e triggers continuam definidos pelo SQL manual e inspecionados por `db:check`.
@@ -31,6 +29,8 @@ Cada turno semanal armazena dia local, hora de abertura/fechamento e marca 24 ho
 Regras de preço usam minutos locais `[start_minute,end_minute)` no mesmo dia, vigência inclusiva, preço por hora em centavos e arquivamento histórico. Faixa que atravessa meia-noite requer duas regras explícitas, uma por data/dia. Regras de mesmo escopo e nível não podem se sobrepor; a API trava a organização e o venue e revalida antes de gravar. O simulador usa a precedência do §6.6, calcula por minuto em inteiros e arredonda ao centavo uma única vez. Não cria transação comercial. Detalhes no [ADR-012](decisions/ADR-012-phase3-operational-model.md).
 
 O catálogo de capabilities foi expandido sem conceder capacidades novas a cargos já persistidos. Templates novos só afetam organizações provisionadas após a migration. Domínios personalizados podem ser solicitados como `pending`; não há verificação DNS, TLS ou ativação.
+
+## Modelo comercial planejado
 
 As fases 3 e 4 modelam clientes, venues, unidades e ocupações. Reservas duram 60 minutos por padrão e a grade padrão é de 15 minutos; o período ocupado é contínuo e semiaberto. Versões da política única da plataforma ficam associadas às reservas. Prazo, multa, no-show, tratamento de mensalistas e exceções permanecem pendentes.
 

@@ -208,6 +208,7 @@ describe('estrutura operacional real', () => {
   });
   it('valida turno noturno, exceção global e simulação sem efeitos', async () => {
     const own = await login(owner),
+      worker = await login(staff),
       v = (await req('GET', '/venues', own))
         .json()
         .items.find((x: { name: string }) => x.name === 'Campo completo').id;
@@ -249,6 +250,16 @@ describe('estrutura operacional real', () => {
       own,
     );
     expect(result.json().totalCents).toBe(8000);
+    expect(
+      (
+        await req(
+          'GET',
+          '/pricing/quote?venueId=' + v + '&date=2026-11-24&startTime=19:00&durationMinutes=60',
+          worker,
+        )
+      ).statusCode,
+    ).toBe(200);
+    expect((await req('GET', '/pricing-rules', worker)).statusCode).toBe(403);
     expect(
       (await pool.query('SELECT count(*)::int AS n FROM arena_identity.audit_logs')).rows[0].n,
     ).toBe(before);

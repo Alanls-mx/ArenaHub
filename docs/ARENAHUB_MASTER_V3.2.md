@@ -1467,7 +1467,7 @@ Decisões arquiteturais ficam em ADRs curtos em `docs/decisions/`. ADR-003/004/0
 | Aprovar defaults de grade, duração, antecedência e buffers | Fundador; feedback comercial posterior pode reavaliar | Antes de habilitar configuração na UI |
 | Aprovar política inicial de mensalista, mês parcial, feriado e cancelamento/no-show | Fundador; registrar como hipótese até validação comercial | Antes dos fluxos financeiros/agenda correspondentes |
 | Confirmar escopo de staff para cancelar e ver cobrança do cliente atendido | Fundador; feedback comercial posterior pode reavaliar | Antes de publicar permissões dessas rotas |
-| Validar divisibilidade de espaços e prioridade de suporte inicial | Fundador como prioridade de MVP; entrevistas posteriores informam adoção | Antes do fechamento da Fase 3 |
+| Medir adoção de espaços divisíveis por arenas reais | Prioridade técnica do MVP já definida pelo fundador; uso real informa evolução | Após o piloto |
 | Valores finais do tema LumixEngine Dark e fonte | CSS do site da LumixEngine | Fase 0 |
 | Lista curada de fontes | Primeiras arenas | Fase 2 |
 | Hospedagem e custo mensal | Estimativa da §13.1 | Fase 0 |

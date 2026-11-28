@@ -1,6 +1,6 @@
 # ERD candidato do MVP — para aprovação do fundador
 
-**Estado:** identidade implementada; domínios comerciais planejados. Fonte de requisitos: `ARENAHUB_MASTER_V3.2.md` §§4–7. Decisão estratégica: [ADR-009](decisions/ADR-009-founder-led-development.md). Premissas comerciais não foram validadas por entrevistas.
+**Estado:** identidade e estrutura operacional da Fase 3 implementadas; ativação de domínios próprios e demais entidades comerciais planejadas. Fonte de requisitos: `ARENAHUB_MASTER_V3.2.md` §§4–7. Decisão estratégica: [ADR-009](decisions/ADR-009-founder-led-development.md). Premissas comerciais não foram validadas por entrevistas.
 
 `organization_id` está indicado nas entidades tenant, mesmo quando omitido dos relacionamentos visuais para legibilidade. FKs entre entidades tenant devem incluir `organization_id`; os diagramas não substituem o contrato de constraints em [DATABASE.md](DATABASE.md). `users` é global; `memberships` associa a pessoa às arenas. `arena_jobs` é schema administrado por pg-boss e omitido.
 

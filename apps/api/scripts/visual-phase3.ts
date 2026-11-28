@@ -219,6 +219,49 @@ try {
     );
     await page.screenshot({ path: `${evidence}${width}x${height}.png`, fullPage: true });
   }
+  // A conta de teste é fixture de autorização; todos os dados operacionais acima vieram da Web.
+  const staffEmail = 'staff-fase3@example.org';
+  await provision(pool, {
+    slug: 'equipe-fase3',
+    name: 'Equipe de teste',
+    ownerName: 'Staff de teste',
+    email: staffEmail,
+    password,
+  });
+  await pool.query(
+    `INSERT INTO arena_identity.memberships(organization_id,user_id)
+     SELECT o.id,u.id FROM arena_identity.organizations o CROSS JOIN arena_identity.users u
+     WHERE o.slug=$1 AND u.email=$2`,
+    [slug, staffEmail],
+  );
+  await pool.query(
+    `INSERT INTO arena_identity.membership_roles(organization_id,user_id,role_id)
+     SELECT o.id,u.id,r.id FROM arena_identity.organizations o
+     JOIN arena_identity.roles r ON r.organization_id=o.id AND r.name='Staff'
+     CROSS JOIN arena_identity.users u WHERE o.slug=$1 AND u.email=$2`,
+    [slug, staffEmail],
+  );
+  const staffPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  staffPage.on('pageerror', (error) => failures.push(error.message));
+  await staffPage.goto(origin);
+  await staffPage.getByLabel('E-mail', { exact: true }).fill(staffEmail);
+  await staffPage.getByLabel('Senha', { exact: true }).fill(password);
+  await staffPage.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await staffPage.getByRole('heading', { name: 'Visão geral' }).waitFor();
+  const staffNav = staffPage.getByRole('navigation', { name: 'Administração da arena' });
+  await staffNav.getByRole('button', { name: 'Preços' }).click();
+  await staffPage.getByRole('heading', { name: 'Simulador' }).waitFor();
+  assert.equal(await staffPage.getByRole('heading', { name: 'Regras de preço' }).count(), 0);
+  const staffQuote = staffPage
+    .getByRole('heading', { name: 'Simulador' })
+    .locator('..')
+    .locator('form');
+  await staffQuote.locator('select[name=venueId]').selectOption({ label: 'Beach Tennis 1' });
+  await staffQuote.locator('select[name=sportId]').selectOption({ label: 'Beach Tennis' });
+  await staffQuote.locator('input[name=date]').fill('2026-12-01');
+  await staffQuote.getByRole('button', { name: 'Calcular preço' }).click();
+  await staffPage.locator('.quote-result').getByText('R$ 80,00', { exact: true }).waitFor();
+  await staffPage.close();
   assert.equal(failures.length, 0, failures.join('\n'));
   const seconds = Math.round((Date.now() - start) / 1000);
   assert(seconds < 1800, 'Configuração excedeu 30 minutos');

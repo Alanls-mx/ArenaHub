@@ -4,7 +4,7 @@
 
 SaaS multi-tenant para gestão de arenas. Leia `docs/AI_CONTEXT.md` e a seção pertinente de `docs/ARENAHUB_MASTER_V3.2.md` antes de alterar comportamento. A especificação descreve o produto; o código e os testes mostram o estado implementado. Registre decisões novas em `docs/decisions/`.
 
-O projeto está na Fase 2 de identidade e acesso (ADR-010). `apps/api/prisma` contém provas técnicas no schema PostgreSQL `occupancy_spike` (ocupação e idempotência); suas tabelas não são o modelo final de produção. `pg-boss` administra `arena_jobs`. Veja `docs/PHASE1_GATE.md` para o estado real.
+A Fase 3 implementou a estrutura operacional em `arena_identity` (ADR-012 e `docs/PHASE3_GATE.md`). A Fase 4 de reservas ainda não começou. `apps/api/prisma` também contém provas técnicas no schema PostgreSQL `occupancy_spike` (ocupação e idempotência); suas tabelas não são o modelo final de produção. `pg-boss` administra `arena_jobs`. Veja `docs/PHASE1_GATE.md` para o estado histórico da Fase 1.
 
 ## Estrutura e comandos existentes
 
@@ -27,7 +27,7 @@ O projeto está na Fase 2 de identidade e acesso (ADR-010). `apps/api/prisma` co
 
 - Instantes concretos usam `timestamptz`/UTC; horários comerciais são locais da organização. Conversões ficam em `apps/api/src/shared/time`.
 - Toda ocupação é escrita pelo service de agendamento; a exclusion constraint PostgreSQL é a autoridade contra sobreposição.
-- Reserva, bloqueio, alteração de links das unidades e escrita de preço travam a linha do venue antes de ler regras ou composição física. Ao travar dois venues, use ordem crescente de ID.
+- Mutações operacionais travam a organização antes do venue. Reserva e bloqueio futuros devem seguir a mesma ordem antes de ler composição, horários, exceções globais e preços ou escrever ocupações. Ao travar dois venues, use ordem crescente de ID.
 - Versões da recorrência do mesmo contrato não podem sobrepor datas; a migration final deve impor isso no banco.
 - Regras de preço do mesmo venue são alteradas sob lock e revalidadas na transação para evitar corrida entre administradores.
 
