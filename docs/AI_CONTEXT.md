@@ -1,6 +1,6 @@
 # Contexto rápido
 
-O ArenaHub é um SaaS multi-tenant. A Fase 1 foi integrada e a Fase 2 implementa identidade, sessões, administração e registro de hosts por organização. [ADR-010](decisions/ADR-010-product-and-access.md), [ADR-011](decisions/ADR-011-organization-domains.md) e [gate local](PHASE2_GATE.md) orientam a continuidade. Agenda, mensalidades, financeiro e ativação de domínios personalizados estão planejados.
+O ArenaHub é um SaaS multi-tenant. A Fase 1 foi integrada e a Fase 2 implementou identidade, sessões, administração e registro de hosts por organização. A Fase 3 implementa clientes básicos, modalidades, venues e unidades físicas, horários, exceções, preços e simulação; veja [ADR-012](decisions/ADR-012-phase3-operational-model.md) e [gate](PHASE3_GATE.md). Agenda, mensalidades, financeiro e ativação de domínios personalizados continuam planejados.
 
 | Área                       | Local                          |
 | -------------------------- | ------------------------------ |

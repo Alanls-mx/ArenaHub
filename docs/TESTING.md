@@ -13,3 +13,11 @@ Cobertura atual: ocupação semiaberta, conflitos e concorrência por duas conex
 O runner aplica as migrations em PostgreSQL 16 descartável, compara os schemas Prisma de ocupação e identidade, verifica as FKs de atribuição, catálogo, triggers de ownership/auditoria e índice global de hostname, e executa os testes HTTP. Para a regressão isolada, use `pnpm --filter @arenahub/api test:integration access.integration.test.ts`. Após `pnpm build`, use `pnpm --filter @arenahub/api test:integration --visual` com Chrome instalado e portas locais 3001/34871 disponíveis. O teste provisiona uma conta sintética em duas arenas, autentica pelo proxy interno confiável, abre o editor e registra as três resoluções em docs/evidence/phase2. Falha do fluxo visual deve retornar código de saída não zero.
 
 O fluxo visual também aceita o convite enviado pelo SMTP e recupera a senha pelo link entregue no Mailpit. O seed local reproduz as duas arenas usadas na validação. Rode `pnpm db:seed` com um objeto JSON pela entrada padrão contendo o campo password, no banco local arenahub. Repetir o seed preserva a senha existente.
+
+## Estrutura operacional da Fase 3
+
+`pnpm test:integration` aplica a migration operacional no PostgreSQL descartável, compara `identity.prisma`, inspeciona FKs compostas, unicidade de exceção global, CHECKs de horários/preços e os triggers diferidos de composição. `structure.integration.test.ts` exercita endpoints reais com duas arenas, papel Staff, composição compartilhada, referências cruzadas, exceção global, simulador sem escrita e duas alterações concorrentes de preço. `rules.test.ts` valida horários atravessando a semana, precedência, ausência de preço e arredondamento.
+
+Após `pnpm build`, execute `pnpm --filter @arenahub/api test:integration --visual-phase3`. O runner cria banco descartável; o script provisiona apenas a conta inicial, configura os dados operacionais pela Web em navegador Chrome, confere persistência SQL e grava screenshots nas três resoluções em `docs/evidence/phase3/`. Nenhum seed ou SQL insere modalidades, venues, unidades, horários, preços ou clientes nesse cenário.
+
+`pnpm openapi:check` compara `docs/OPENAPI_PHASE3.json` com a geração atual dos schemas Zod compartilhados e a matriz de rotas. O workflow de CI executa essa checagem após `typecheck`.

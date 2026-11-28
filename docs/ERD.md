@@ -1,6 +1,6 @@
 # ERD candidato do MVP — para aprovação do fundador
 
-**Estado:** identidade implementada; domínios comerciais planejados. Fonte de requisitos: `ARENAHUB_MASTER_V3.2.md` §§4–7. Decisão estratégica: [ADR-009](decisions/ADR-009-founder-led-development.md). Premissas comerciais não foram validadas por entrevistas.
+**Estado:** identidade e estrutura operacional da Fase 3 implementadas; ativação de domínios próprios e demais entidades comerciais planejadas. Fonte de requisitos: `ARENAHUB_MASTER_V3.2.md` §§4–7. Decisão estratégica: [ADR-009](decisions/ADR-009-founder-led-development.md). Premissas comerciais não foram validadas por entrevistas.
 
 `organization_id` está indicado nas entidades tenant, mesmo quando omitido dos relacionamentos visuais para legibilidade. FKs entre entidades tenant devem incluir `organization_id`; os diagramas não substituem o contrato de constraints em [DATABASE.md](DATABASE.md). `users` é global; `memberships` associa a pessoa às arenas. `arena_jobs` é schema administrado por pg-boss e omitido.
 
@@ -36,7 +36,7 @@ erDiagram
 
 A chave da membership é (organization_id, user_id). is_owner é um atributo protegido. As duas pontas das atribuições compartilham organization_id. Cada organização operacional é provisionada com um Owner ativo. Instâncias de cargo têm nome único por organização, sem distinguir caixa.
 
-Os diagramas seguintes são planejamento das fases 3 a 5. Pix acrescentará conta vinculada, intenção, tentativa, evento, reembolso e conciliação por organização. A reserva referencia uma versão da política central de cancelamento.
+As nove tabelas de estrutura e clientes da Fase 3 estão implementadas em `arena_identity` pela migration `20261127014000_operational_structure`. No diagrama abaixo, `VENUE_BLOCKS`, `CUSTOMER_NOTES` e o login opcional de cliente continuam planejamento de fases posteriores; `PRICING_RULES` armazena faixas como `start_minute` e `end_minute` em vez de horários SQL. Pix acrescentará conta vinculada, intenção, tentativa, evento, reembolso e conciliação por organização. A reserva futura referencia uma versão da política central de cancelamento.
 
 ## Configuração da arena e clientes
 
@@ -126,8 +126,8 @@ erDiagram
         uuid sport_id FK
         date specific_date
         int weekday
-        time start_time
-        time end_time
+        smallint start_minute
+        smallint end_minute
         bigint price_per_hour_cents
         date valid_from
         date valid_until
@@ -135,7 +135,7 @@ erDiagram
     CUSTOMERS {
         uuid id PK
         uuid organization_id FK
-        uuid user_id FK
+        uuid user_id "Fase posterior"
         text name
         text phone_e164
         citext email

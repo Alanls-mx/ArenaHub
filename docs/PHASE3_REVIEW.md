@@ -1,0 +1,27 @@
+# Revisão direcionada da Fase 3
+
+Referência: PR [#4](https://github.com/Alanls-mx/ArenaHub/pull/4), base `e1b0c73`, HEAD inicial `587ccfe25b1bec01f6b1a1d44944410d75057989`. Revisão limitada à estrutura operacional e ao gate de publicação; pareceres das fases anteriores foram preservados.
+
+## Mapa e verificações
+
+A Web autenticada consome contratos Zod em `packages/contracts`, chama a API Fastify no mesmo host e apresenta somente ações autorizadas. A API revalida sessão, origem/CSRF em mutações, host, membership e capability, inicia transação com `search_path` local, deriva `organization_id` no servidor, filtra SQL por arena e grava auditoria na mesma transação. A migration da Fase 3 cria nove tabelas em `arena_identity`, com FKs compostas nas relações tenant, CHECKs, unicidade de exceção global e triggers diferidos para composição ativa. O simulador usa a função pura `quote` e apenas consultas. A fila e o schema experimental `occupancy_spike` não participam deste fluxo.
+
+Foram inspecionados criação, leitura, edição e arquivamento dos recursos; referências entre arenas; permissões por rota; locks de organização e venue; exclusão/atualização de vínculos; turno noturno e virada semanal; exceções; precedência, vigência e concorrência de preço; arredondamento em inteiros; e solicitações de domínio. O teste de integração cobre duas arenas, Staff, FKs, trigger com SQL direto, concorrência e ausência de auditoria na simulação. A futura Fase 4 deve adquirir primeiro o lock da organização e depois o do venue, inclusive ao considerar exceções globais; ocupações e reservas finais continuam fora desta revisão.
+
+## Achados e resolução
+
+| Severidade | Achado comprovado                                                                                                                                       | Resolução                                                                                                                                                                                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P1         | O template Staff possuía `pricing.simulate`, mas a navegação exigia `pricing.read` para abrir a aba de preços; o simulador ficava inacessível pela Web. | A aba aparece com qualquer uma das duas capacidades; a lista de regras permanece restrita a `pricing.read`. O cenário visual agora entra como Staff, abre o simulador, calcula preço e confirma que não vê as regras. O teste HTTP confirma simulação permitida e listagem proibida. |
+| P2         | O gate apresentava os 5 segundos da automação como se comprovassem tempo de configuração humana e citava um SHA de CI anterior ao HEAD do PR.           | Gate corrigido para declarar tempo automatizado, ausência de medição humana e CI do SHA correto.                                                                                                                                                                                     |
+| P2         | Instruções e ERD ainda descreviam a Fase 2 como estado atual; a ordem de locks necessária à Fase 4 não estava explícita.                                | Contexto documental atualizado, incluindo ordem organização → venue e venues em ordem de ID.                                                                                                                                                                                         |
+
+Nenhum P0 foi identificado. Após a correção e a revalidação, não restam P0/P1 conhecidos nesta revisão direcionada.
+
+## Cenário funcional e limites da evidência
+
+`visual-phase3.ts` cria somente a conta inicial por fixture. Modalidades, venues, unidades, links, horários, exceção, regra, cliente e solicitação de domínio são criados por formulários na Web, com respostas da API real; consultas SQL posteriores conferem as contagens persistidas. A conta Staff adicional é fixture exclusiva do teste de autorização. O cenário testa preço, teclado, erros de página e ausência de transbordamento nas capturas de 1440 × 900, 768 × 1024 e 390 × 844. A interface apresenta carregamento, confirmação/erro, validação de formulários e controles por capability. O tempo de **5 segundos** mede execução automatizada, não utilização por uma pessoa; não houve teste de usabilidade humana.
+
+## Gate e fronteiras
+
+Os resultados de lint, formatação, tipos, unitários, integração em PostgreSQL descartável com `db:check`, OpenAPI, build, diff e CI do HEAD corrigido são registrados em [PHASE3_GATE.md](PHASE3_GATE.md). A função pura de preço pode ser chamada pelo futuro service de reservas, que precisará converter horário civil ao fuso da organização, verificar funcionamento/disponibilidade e preservar snapshot da cotação na reserva. Domínios próprios permanecem apenas `pending`, sem verificação, ativação ou login no host próprio. RLS segue para revisão antes do piloto. Tempo humano de configuração, agenda definitiva e financeiro não foram validados nesta fase.

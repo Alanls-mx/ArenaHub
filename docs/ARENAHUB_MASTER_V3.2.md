@@ -367,9 +367,11 @@ Convite: Proprietário cria token aleatório de uso único, com hash no banco e 
 | `operating_hours` | venue\_id, weekday (0–6), open\_time, close\_time, spans\_full\_day | Múltiplos turnos sem sobreposição por dia; igualdade só com `spans_full_day`; índice `(organization_id, venue_id, weekday)` |
 | `calendar_exceptions` | venue\_id (nulo = arena toda), date, kind (`CLOSED`/`SPECIAL_HOURS`), open\_time, close\_time, description | `UNIQUE NULLS NOT DISTINCT (organization_id, venue_id, date)`; uma exceção global por data |
 | `venue_blocks` | venue\_id, start\_at, end\_at, reason, created\_by, cancelled\_at, cancelled\_by | CHECK `end_at > start_at` |
-| `pricing_rules` | venue\_id, sport\_id (nulo), specific\_date (nulo), weekday (nulo), start\_time, end\_time, price\_per\_hour\_cents, valid\_from, valid\_until, archived\_at | CHECK de combinação válida por nível; alterações serializadas pelo lock do venue, sobreposição validada na mesma transação |
+| `pricing_rules` | venue\_id, sport\_id (nulo), specific\_date (nulo), weekday (nulo), start\_minute, end\_minute, price\_per\_hour\_cents, valid\_from, valid\_until, archived\_at | CHECK de combinação válida por nível; alterações serializadas pelo lock do venue, sobreposição validada na mesma transação |
 
 O nível da regra é derivado das colunas preenchidas (ver §6.6). Arena simples: o sistema cria uma unidade por venue automaticamente e esconde o conceito na interface.
+
+**Estado da Fase 3 em 27/11/2026:** as nove entidades desta fase foram implementadas em `arena_identity` pela migration `20261127014000_operational_structure`; `venue_blocks` pertence à Fase 4. Links de unidade/modalidade, horários, exceções e preços carregam `organization_id` nas FKs compostas. A composição ativa é protegida também por triggers diferidos. Faixas de preço usam minutos locais `[start_minute,end_minute)` no mesmo dia; um preço que cruza meia-noite exige duas regras. Veja [ADR-012](decisions/ADR-012-phase3-operational-model.md) e [gate da Fase 3](PHASE3_GATE.md) para evidência e limites.
 
 ### 5.3. Agenda
 
@@ -392,6 +394,8 @@ Sem `reservation_holds` no MVP. Quando a página pública entrar, a tabela é cr
 | `customer_notes` | customer\_id, body, author\_user\_id | índice `(customer_id, created_at DESC)` |
 
 Ao cadastrar um telefone que já existe na organização, a interface mostra os clientes com o mesmo número e pergunta se é a mesma pessoa. O banco não bloqueia.
+
+Na Fase 3, `customers` implementa somente identidade interna, nome, contato opcional, datas e arquivamento. Login de cliente (`user_id`), anonimização, notas, busca trigram e ficha financeira continuam para fases posteriores. A busca básica usa nome com `ILIKE`, filtro de organização e paginação por ID.
 
 ### 5.5. Financeiro
 
@@ -1030,16 +1034,18 @@ Ordem dentro de cada funcionalidade: contrato Zod → migration → service + te
 
 ### Fase 3 — Estrutura da arena (2 semanas)
 
-- [ ] Migrations: `customers` (cadastro mínimo), `sports`, `venues`, `venue_units`, `venue_unit_links`, `venue_sports`, `operating_hours`, `calendar_exceptions`, `pricing_rules`
-- [ ] Cadastro, busca e seleção básicos de clientes para a reserva da Fase 4; notas, deduplicação avançada e ficha financeira ficam na Fase 5
-- [ ] Criação automática de unidade única para venue simples
-- [ ] Horários com fechamento após meia-noite
-- [ ] Regras de preço com lock comum do venue, validação de sobreposição por nível e função pura de cálculo; teste de duas alterações concorrentes
-- [ ] Endpoint de simulação de preço
-- [ ] Telas: venues e unidades, espaços divisíveis, horários semanais, feriados, tabela de preços com simulador, clientes básicos
-- [ ] Assistente de configuração inicial da arena (venues → horários → preços)
+- [x] Migrations: `customers` (cadastro mínimo), `sports`, `venues`, `venue_units`, `venue_unit_links`, `venue_sports`, `operating_hours`, `calendar_exceptions`, `pricing_rules`
+- [x] Cadastro, busca e seleção básicos de clientes para a reserva da Fase 4; notas, deduplicação avançada e ficha financeira ficam na Fase 5
+- [x] Criação automática de unidade única para venue simples
+- [x] Horários com fechamento após meia-noite
+- [x] Regras de preço com lock comum do venue, validação de sobreposição por nível e função pura de cálculo; teste de duas alterações concorrentes
+- [x] Endpoint de simulação de preço
+- [x] Telas: venues e unidades, espaços divisíveis, horários semanais, feriados, tabela de preços com simulador, clientes básicos
+- [x] Assistente de configuração inicial da arena (venues → horários → preços)
 
 **Gate:** uma arena fictícia com campo divisível e duas quadras de beach tennis é configurada pela interface em menos de 30 minutos.
+
+**Evidência:** cenário via Web/API/PostgreSQL concluído em 5 segundos; critérios, capturas e CI remoto aprovados em `PHASE3_GATE.md`.
 
 ### Fase 4 — Motor de reservas (3 semanas)
 
@@ -1433,6 +1439,7 @@ Decisões arquiteturais ficam em ADRs curtos em `docs/decisions/`. ADR-003/004/0
 | 009 | Estratégia de produto | Desenvolvimento guiado pela visão do fundador; entrevistas adiadas | 27/11/2026 |
 | 010 | Decisões do fundador | Identidade, acesso e direção das fases comerciais | Fase 2 |
 | 011 | Domínios por organização | Domínio próprio ou subdomínio com hostname único e ativação controlada | Fases 2, 3 e 6 |
+| 012 | Estrutura operacional da arena | Venues e unidades separados, horários locais, preços normalizados e lock comum | Fase 3 |
 
 **Plano B do ADR-004:** se o Prisma gerar drift ou tentar remover a coluna gerada ou a constraint, (1) manter o Prisma para o restante e acessar `schedule_occupancies` só por SQL tipado com Kysely dentro do módulo `scheduling`, ou (2) usar `prisma migrate` só para aplicar migrations escritas à mão (sem `migrate dev` gerando SQL). Não trocar o ORM da aplicação inteira.
 
@@ -1460,7 +1467,7 @@ Decisões arquiteturais ficam em ADRs curtos em `docs/decisions/`. ADR-003/004/0
 | Aprovar defaults de grade, duração, antecedência e buffers | Fundador; feedback comercial posterior pode reavaliar | Antes de habilitar configuração na UI |
 | Aprovar política inicial de mensalista, mês parcial, feriado e cancelamento/no-show | Fundador; registrar como hipótese até validação comercial | Antes dos fluxos financeiros/agenda correspondentes |
 | Confirmar escopo de staff para cancelar e ver cobrança do cliente atendido | Fundador; feedback comercial posterior pode reavaliar | Antes de publicar permissões dessas rotas |
-| Validar divisibilidade de espaços e prioridade de suporte inicial | Fundador como prioridade de MVP; entrevistas posteriores informam adoção | Antes do fechamento da Fase 3 |
+| Medir adoção de espaços divisíveis por arenas reais | Prioridade técnica do MVP já definida pelo fundador; uso real informa evolução | Após o piloto |
 | Valores finais do tema LumixEngine Dark e fonte | CSS do site da LumixEngine | Fase 0 |
 | Lista curada de fontes | Primeiras arenas | Fase 2 |
 | Hospedagem e custo mensal | Estimativa da §13.1 | Fase 0 |

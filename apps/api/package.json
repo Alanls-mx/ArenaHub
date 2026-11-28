@@ -19,6 +19,8 @@
     "org:create": "node --env-file-if-exists=../../.env --import tsx scripts/org-create.ts",
     "theme:check": "node --import tsx scripts/theme.ts check",
     "theme:publish": "node --import tsx scripts/theme.ts publish",
+    "openapi:generate": "node scripts/openapi-phase3.mjs",
+    "openapi:check": "node scripts/openapi-phase3.mjs --check",
     "db:seed": "node --env-file=../../.env --import tsx scripts/seed-local.ts"
   },
   "dependencies": {

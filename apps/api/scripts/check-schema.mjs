@@ -109,7 +109,72 @@ try {
     throw Error('Normalização SQL de hostname ausente');
   if (!has('arena_identity.organization_domains', 'c', /status.*active.*activated_at/))
     throw Error('Estado de ativação de domínio sem CHECK');
-  console.log('Garantias SQL de ocupação, identidade e domínios verificadas.');
+  const operational = await client.query(`
+    SELECT conrelid::regclass::text AS table_name, conname, contype,
+           pg_get_constraintdef(oid) AS definition
+    FROM pg_constraint WHERE connamespace='arena_identity'::regnamespace`);
+  const check = (table, type, pattern, label) => {
+    if (
+      !operational.rows.some(
+        (r) =>
+          r.table_name === `arena_identity.${table}` &&
+          r.contype === type &&
+          pattern.test(r.definition),
+      )
+    )
+      throw Error(`Garantia SQL operacional ausente: ${label}`);
+  };
+  for (const [table, parent] of [
+    ['venue_unit_links', 'venues'],
+    ['venue_unit_links', 'venue_units'],
+    ['venue_sports', 'venues'],
+    ['venue_sports', 'sports'],
+    ['operating_hours', 'venues'],
+    ['calendar_exceptions', 'venues'],
+    ['pricing_rules', 'venues'],
+    ['pricing_rules', 'sports'],
+  ])
+    check(
+      table,
+      'f',
+      new RegExp(
+        `FOREIGN KEY \\(organization_id, (?:venue_id|unit_id|sport_id)\\) REFERENCES (?:arena_identity\\.)?${parent}\\(organization_id, id\\)`,
+      ),
+      `${table} → ${parent}`,
+    );
+  check(
+    'calendar_exceptions',
+    'u',
+    /UNIQUE NULLS NOT DISTINCT \(organization_id, venue_id, date\)/,
+    'unicidade de exceção global',
+  );
+  check('pricing_rules', 'c', /start_minute < end_minute/, 'intervalo de preço');
+  check('pricing_rules', 'c', /price_per_hour_cents.*9007199254740991/, 'centavos seguros');
+  check('pricing_rules', 'c', /specific_date IS NOT NULL.*weekday IS NULL/, 'escopo de preço');
+  check('operating_hours', 'c', /open_time = close_time.*spans_full_day/, 'horário contínuo');
+  const customerIndexes = await client.query(
+    "SELECT indexname FROM pg_indexes WHERE schemaname='arena_identity' AND tablename='customers'",
+  );
+  if (!customerIndexes.rows.some((r) => r.indexname === 'customers_phone'))
+    throw Error('Índice de telefone por arena ausente');
+  const triggers = await client.query(`SELECT tgname,tgdeferrable FROM pg_trigger
+    WHERE tgrelid IN ('arena_identity.venues'::regclass,'arena_identity.venue_unit_links'::regclass,'arena_identity.venue_units'::regclass)
+    AND NOT tgisinternal`);
+  for (const name of ['venue_composition_guard', 'venue_links_guard', 'venue_unit_archive_guard'])
+    if (!triggers.rows.some((r) => r.tgname === name && r.tgdeferrable))
+      throw Error(`Garantia SQL operacional ausente: ${name}`);
+  const compositionFunction = await client.query(
+    "SELECT proconfig FROM pg_proc WHERE pronamespace='arena_identity'::regnamespace AND proname='ensure_venue_composition'",
+  );
+  if (
+    !compositionFunction.rows[0]?.proconfig?.some(
+      (x) => x.replaceAll(' ', '') === 'search_path=arena_identity,pg_catalog',
+    )
+  )
+    throw Error('Trigger de composição sem search_path fixo');
+  console.log(
+    'Garantias SQL de ocupação, identidade, domínios e estrutura operacional verificadas.',
+  );
 } finally {
   await client.end().catch(() => undefined);
 }

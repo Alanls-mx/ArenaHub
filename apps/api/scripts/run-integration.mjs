@@ -66,6 +66,10 @@ async function main() {
       await run(process.execPath, ['--import', 'tsx', 'scripts/visual-identity.ts'], env);
       return;
     }
+    if (process.argv.includes('--visual-phase3')) {
+      await run(process.execPath, ['--import', 'tsx', 'scripts/visual-phase3.ts'], env);
+      return;
+    }
     await run(
       process.execPath,
       [
