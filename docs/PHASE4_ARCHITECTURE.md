@@ -2,7 +2,7 @@
 
 `access-client.tsx` monta `agenda-client.tsx` além da operação da Fase 3. A agenda consulta `/access` para ações por capability e `/context` para o fuso da arena. Reserva e worker usam lock compartilhado da organização e locks de venues ordenados. Fastify mantém `LISTEN` dedicado por processo; `NOTIFY` transacional alcança o WebSocket após commit. Os testes em PostgreSQL descartável exercitam essas ligações, inclusive revalidação da membership, remarcação com rollback, reconexão do listener e consumo de recorrência pelo pg-boss.
 
-Estado: mapa da implementação local da Fase 4 sobre `main` `af3bad591287cbeb948c51bc164ffc5c5e4df47a`. O gate e o CI remoto ficam em `PHASE4_GATE.md`.
+Estado: mapa da implementação da Fase 4 integrada na `main` pelo PR #6. O gate e o CI remoto ficam em `PHASE4_GATE.md`.
 
 ## Fluxo atual e fronteiras
 

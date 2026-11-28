@@ -1080,7 +1080,7 @@ Ordem dentro de cada funcionalidade: contrato Zod → migration → service + te
 - [x] Grade diária/semanal com venues, unidades divisíveis, estados, detalhes, histórico, reservas, mensalistas e alertas de conflito.
 - [x] Testes de hora local: meia-noite, virada de mês, Manaus e horário de verão em zona com transição.
 
-**Gate local em 28/11/2026:** testes de concorrência (avulsa × avulsa, avulsa × bloqueio, recorrência × avulsa, campo inteiro × meia quadra e três escritores simultâneos) verdes; agenda semanal com 300 reservas respondeu em menos de 300 ms no ambiente local. O encerramento formal depende do PR e CI remoto; efeitos financeiros definitivos permanecem na Fase 5, sem liberação de piloto financeiro nesta fase. Ver [PHASE4_GATE](PHASE4_GATE.md).
+**Gate aprovado em 28/11/2026:** testes de concorrência (avulsa × avulsa, avulsa × bloqueio, recorrência × avulsa, campo inteiro × meia quadra e três escritores simultâneos) verdes; agenda semanal com 300 reservas respondeu em menos de 300 ms no ambiente local. O PR #6 e o CI Linux do PR e da `main` passaram. Efeitos financeiros definitivos permanecem na Fase 5, sem liberação de piloto financeiro nesta fase. Ver [PHASE4_GATE](PHASE4_GATE.md).
 
 ### Fase 5 — Clientes e financeiro (2,5 semanas)
 
