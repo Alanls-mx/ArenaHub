@@ -1,0 +1,11 @@
+{
+  "volume": 300,
+  "venues": 3,
+  "postgres": "16.16 (Debian 16.16-1.pgdg13+1)",
+  "sqlMs": [2.39, 2.01, 2.03, 1.55, 1.77],
+  "httpMs": [12.24, 11.52, 11.36, 10.97, 10.52],
+  "browserWeekMs": [93.94, 98.69, 113.7],
+  "environment": "PostgreSQL 16 descartável em Docker local; Next production, Fastify e Chrome headless",
+  "cache": "cinco consultas sequenciais em banco aquecido; renderização alternando dia/semana",
+  "limitation": "fixture sintético, três venues, sem latência de rede de produção; navegador automatizado não mede usabilidade humana"
+}

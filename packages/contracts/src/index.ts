@@ -4,3 +4,4 @@ export * from './http.js';
 export * from './identity.js';
 export * from './theme-check.js';
 export * from './operations.js';
+export * from './booking.js';

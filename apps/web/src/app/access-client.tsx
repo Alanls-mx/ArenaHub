@@ -9,6 +9,7 @@ import {
   type Theme,
 } from '@arenahub/contracts';
 import { useEffect, useState, type FormEvent } from 'react';
+import Agenda from './agenda-client';
 import Operations from './operations-client';
 
 const permissionLabel: Record<Capability, string> = {
@@ -41,6 +42,18 @@ const permissionLabel: Record<Capability, string> = {
   'pricing.manage': 'Gerenciar regras de preço',
   'pricing.simulate': 'Simular preços',
   'domains.manage': 'Solicitar domínio personalizado',
+  'reservations.read': 'Consultar agenda e disponibilidade',
+  'reservations.create': 'Criar reservas',
+  'reservations.manage': 'Gerenciar reservas',
+  'schedule_blocks.manage': 'Gerenciar bloqueios da agenda',
+  'recurrences.read': 'Consultar mensalistas',
+  'recurrences.manage': 'Gerenciar mensalistas',
+  'reservations.confirm': 'Confirmar reservas',
+  'reservations.reschedule': 'Remarcar reservas',
+  'reservations.cancel': 'Cancelar reservas',
+  'reservations.no_show': 'Registrar ausência',
+  'reservations.complete': 'Concluir reservas',
+  'commercial_policy.override': 'Autorizar exceção comercial',
 };
 type Me = ReturnType<typeof sessionSchema.parse>;
 type Role = ReturnType<typeof roleViewSchema.parse>;
@@ -101,7 +114,7 @@ export default function AccessClient() {
     [org, setOrg] = useState(''),
     [message, msg] = useState(''),
     [busy, setBusy] = useState(false),
-    [section, setSection] = useState<'operations' | 'team'>('operations');
+    [section, setSection] = useState<'agenda' | 'operations' | 'team'>('agenda');
   async function load() {
     const user = sessionSchema.parse(await api('/auth/me'));
     setMe(user);
@@ -188,6 +201,12 @@ export default function AccessClient() {
             </label>
             <nav aria-label="Navegação da conta">
               <button
+                aria-current={section === 'agenda' ? 'page' : undefined}
+                onClick={() => setSection('agenda')}
+              >
+                Agenda
+              </button>
+              <button
                 aria-current={section === 'operations' ? 'page' : undefined}
                 onClick={() => setSection('operations')}
               >
@@ -237,7 +256,9 @@ export default function AccessClient() {
             </button>
           </aside>
           {org ? (
-            section === 'operations' ? (
+            section === 'agenda' ? (
+              <Agenda key={org} org={org} csrf={me.csrf} />
+            ) : section === 'operations' ? (
               <Operations key={org} org={org} csrf={me.csrf} />
             ) : (
               <Team key={org} org={org} csrf={me.csrf} />

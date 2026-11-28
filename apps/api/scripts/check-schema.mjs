@@ -172,9 +172,99 @@ try {
     )
   )
     throw Error('Trigger de composição sem search_path fixo');
-  console.log(
-    'Garantias SQL de ocupação, identidade, domínios e estrutura operacional verificadas.',
+  check(
+    'schedule_occupancies',
+    'x',
+    /EXCLUDE USING gist.*organization_id WITH =.*unit_id WITH =.*period WITH &&.*WHERE \(active\)/,
+    'exclusão física definitiva por arena e unidade',
   );
+  check('schedule_occupancies', 'c', /end_at > start_at/, 'intervalo físico positivo');
+  check(
+    'schedule_occupancies',
+    'c',
+    /num_nonnulls\(reservation_id, block_id\) = 1/,
+    'origem única de ocupação',
+  );
+  for (const [column, target] of [
+    ['unit_id', 'venue_units'],
+    ['reservation_id', 'reservations'],
+    ['block_id', 'venue_blocks'],
+  ])
+    check(
+      'schedule_occupancies',
+      'f',
+      new RegExp(
+        `FOREIGN KEY \\(organization_id, ${column}\\) REFERENCES (?:arena_identity\\.)?${target}\\(organization_id, id\\)`,
+      ),
+      `ocupação → ${target}`,
+    );
+  check(
+    'recurrences',
+    'x',
+    /EXCLUDE USING gist.*organization_id WITH =.*contract_id WITH =.*daterange.*WITH &&/,
+    'vigência exclusiva de versões',
+  );
+  for (const [table, column, parent] of [
+    ['reservations', 'customer_id', 'customers'],
+    ['reservations', 'venue_id', 'venues'],
+    ['reservations', 'recurrence_id', 'recurrences'],
+    ['venue_blocks', 'venue_id', 'venues'],
+    ['recurrences', 'contract_id', 'recurrence_contracts'],
+    ['recurrence_exceptions', 'recurrence_id', 'recurrences'],
+    ['reservation_history', 'reservation_id', 'reservations'],
+    ['recurrence_rules', 'recurrence_id', 'recurrences'],
+  ])
+    check(
+      table,
+      'f',
+      new RegExp(
+        `FOREIGN KEY \\(organization_id, ${column}\\) REFERENCES (?:arena_identity\\.)?${parent}\\(organization_id, id\\)`,
+      ),
+      `${table} → ${parent}`,
+    );
+  check(
+    'reservation_payment_confirmations',
+    'f',
+    /FOREIGN KEY \(organization_id, customer_id, reservation_id\) REFERENCES (?:arena_identity\.)?reservations\(organization_id, customer_id, id\)/,
+    'prova financeira ligada ao cliente da reserva',
+  );
+  check(
+    'recurrence_rules',
+    'u',
+    /UNIQUE \(organization_id, recurrence_id, weekday\)/,
+    'uma regra semanal por dia',
+  );
+  check(
+    'reservation_commercial_outcomes',
+    'c',
+    /amount_cents.*9007199254740991/,
+    'resultado comercial em centavos',
+  );
+  const commercialIndexes = await client.query(
+    "SELECT indexdef FROM pg_indexes WHERE schemaname='arena_identity' AND tablename='reservation_commercial_outcomes'",
+  );
+  if (
+    !commercialIndexes.rows.some((r) =>
+      /UNIQUE INDEX reservation_terminal_outcome.*\(organization_id, reservation_id, kind\).*WHERE.*CANCELLATION.*NO_SHOW/.test(
+        r.indexdef,
+      ),
+    )
+  )
+    throw Error('Unicidade de resultados terminais ausente');
+  const finalPeriod =
+    await client.query(`SELECT a.attgenerated,format_type(a.atttypid,a.atttypmod) AS type,
+    pg_get_expr(d.adbin,d.adrelid) AS expression FROM pg_attribute a
+    JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+    JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum
+    WHERE n.nspname='arena_identity' AND c.relname='schedule_occupancies' AND a.attname='period'`);
+  if (finalPeriod.rows[0]?.attgenerated !== 's' || finalPeriod.rows[0]?.type !== 'tstzrange')
+    throw Error('Período definitivo não é range gerado');
+  requireMatch(
+    finalPeriod.rows[0]?.expression,
+    /tstzrange\(start_at, end_at, '\[\)'/,
+    'range definitivo semiaberto',
+  );
+  console.log('Garantias SQL de ocupação, identidade, domínios, estrutura e agenda verificadas.');
 } finally {
   await client.end().catch(() => undefined);
 }

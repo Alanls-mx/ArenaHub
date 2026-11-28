@@ -30,15 +30,23 @@ Regras de preço usam minutos locais `[start_minute,end_minute)` no mesmo dia, v
 
 O catálogo de capabilities foi expandido sem conceder capacidades novas a cargos já persistidos. Templates novos só afetam organizações provisionadas após a migration. Domínios personalizados podem ser solicitados como `pending`; não há verificação DNS, TLS ou ativação.
 
+## Implementação da Fase 4 — agenda definitiva
+
+A migration `20261127015000_booking_engine` cria em `arena_identity`: `reservations`, `reservation_history`, `venue_blocks`, `schedule_occupancies`, `recurrence_contracts`, `recurrences`, `recurrence_rules`, `recurrence_exceptions`, `reservation_commercial_outcomes`, `reservation_payment_confirmations` e `idempotency_keys`. `identity.prisma` espelha o modelo; `check-schema.mjs` verifica semanticamente as garantias que Prisma não representa.
+
+Cada reserva e bloqueio cria uma ocupação por unidade elementar. `period` é `tstzrange` gerado `[start_at,end_at)`; `schedule_no_overlap_final` exclui sobreposição ativa por `(organization_id,unit_id)`. FKs compostas mantêm origem, cliente, venue, modalidade, contrato e unidade na mesma arena. O serviço adquire `organizations FOR SHARE` e depois `venues FOR UPDATE` em ID crescente; a Fase 3 adquire organização `FOR UPDATE` antes do venue, então mudanças estruturais esperam a reserva e recusam alteração incompatível com ocupação futura. A agenda lê intervalos locais da organização, exceções e snapshots de preço; disponibilidade é fotografia e a escrita repete a validação sob lock.
+
+Versões recorrentes são exclusivas por organização, contrato e vigência via GiST `daterange`; `recurrence_rules` guarda um dia/horário por regra. O worker `pg-boss` materializa até dez semanas, com transação por ocorrência, unicidade `(recurrence_id,occurrence_date)` e exceção de conflito persistida separadamente. `idempotency_keys` é definitivo e distinto da prova em `occupancy_spike`, guardando resposta na transação da operação. `reservation_payment_confirmations` guarda apenas referência de evidência previamente validada; financeiro definitivo continua na Fase 5. Ver [ADR-013](decisions/ADR-013-phase4-realtime.md), [ADR-014](decisions/ADR-014-phase4-commercial-policy.md) e [ADR-015](decisions/ADR-015-phase4-payment-boundary.md).
+
 ## Modelo comercial planejado
 
-As fases 3 e 4 modelam clientes, venues, unidades e ocupações. Reservas duram 60 minutos por padrão e a grade padrão é de 15 minutos; o período ocupado é contínuo e semiaberto. Versões da política única da plataforma ficam associadas às reservas. Prazo, multa, no-show, tratamento de mensalistas e exceções permanecem pendentes.
+A Fase 4 implementa clientes, venues, unidades e ocupações. Reservas duram 60 minutos por padrão e a grade padrão é de 15 minutos; o período ocupado é contínuo e semiaberto. A política V1 de cancelamento e no-show está definida no ADR-014. Exceções comerciais, feriados e reposições permanecem pendentes.
 
-A Fase 5 acrescenta contratos e competências com primeiro mês proporcional automático. Atraso gera alerta e preserva reservas. A base por ocorrências é proposta e depende da definição de feriados, vigência e arredondamento. Cobranças, pagamentos, estornos e alocações preservam histórico e cliente. A primeira versão comercial exige Pix confirmado automaticamente para a arena beneficiária. Ver [plano Mercado Pago](MERCADO_PAGO.md) e [matriz de impacto](decisions/ADR-010-product-and-access.md).
+A Fase 5 acrescenta competências e cobranças, reutilizando os contratos da Fase 4 e o cálculo proporcional já definido para o primeiro mês. Atraso gera alerta e preserva reservas. Cobranças, pagamentos, estornos e alocações preservam histórico e cliente. A primeira versão comercial exige Pix confirmado automaticamente para a arena beneficiária. Ver [plano Mercado Pago](MERCADO_PAGO.md) e [matriz de impacto](decisions/ADR-010-product-and-access.md).
 
 ### Constraints e integridade candidatas
 
-Estas garantias são propostas para migration SQL revisada; nenhuma delas é declarada já implementada no schema final:
+As garantias de agenda dos itens 2, 3, 4 e 8 já foram implementadas nas migrations das Fases 3 e 4; os demais itens financeiros continuam previstos para a Fase 5:
 
 1. FKs compostas com `organization_id` em referências tenant; alocações carregam `customer_id` nas FKs triplas a `payments` e `charges`.
 2. `schedule_occupancies`: `CHECK (end_at > start_at)`, origem exatamente uma entre reservation/block, range `[)` gerado, FK tenant para unidade/origem e `EXCLUDE USING gist (unit_id WITH =, period WITH &&) WHERE active`.

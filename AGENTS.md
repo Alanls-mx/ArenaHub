@@ -4,7 +4,7 @@
 
 SaaS multi-tenant para gestão de arenas. Leia `docs/AI_CONTEXT.md` e a seção pertinente de `docs/ARENAHUB_MASTER_V3.2.md` antes de alterar comportamento. A especificação descreve o produto; o código e os testes mostram o estado implementado. Registre decisões novas em `docs/decisions/`.
 
-A Fase 3 implementou a estrutura operacional em `arena_identity` (ADR-012 e `docs/PHASE3_GATE.md`). A Fase 4 de reservas ainda não começou. `apps/api/prisma` também contém provas técnicas no schema PostgreSQL `occupancy_spike` (ocupação e idempotência); suas tabelas não são o modelo final de produção. `pg-boss` administra `arena_jobs`. Veja `docs/PHASE1_GATE.md` para o estado histórico da Fase 1.
+A Fase 3 implementou a estrutura operacional em `arena_identity` (ADR-012 e `docs/PHASE3_GATE.md`). A Fase 4 está em implementação na branch `feat/phase-4-booking-engine`; veja `docs/PHASE4_ARCHITECTURE.md` e `docs/PHASE4_GATE.md` antes de declarar resultados. `apps/api/prisma` também contém provas técnicas no schema PostgreSQL `occupancy_spike` (ocupação e idempotência); suas tabelas não são o modelo final de produção. `pg-boss` administra `arena_jobs`. Veja `docs/PHASE1_GATE.md` para o estado histórico da Fase 1.
 
 ## Estrutura e comandos existentes
 

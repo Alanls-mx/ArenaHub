@@ -51,15 +51,24 @@ model membership_roles {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model memberships {
-  organization_id     String               @db.Uuid
-  user_id             String               @db.Uuid
-  status              String               @default("active")
-  is_owner            Boolean              @default(false)
-  invites             invites[]
-  membership_roles    membership_roles[]
-  organizations       organizations        @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users               users                @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  organization_themes organization_themes[]
+  organization_id                                                     String                            @db.Uuid
+  user_id                                                             String                            @db.Uuid
+  status                                                              String                            @default("active")
+  is_owner                                                            Boolean                           @default(false)
+  idempotency_keys                                                    idempotency_keys[]
+  invites                                                             invites[]
+  membership_roles                                                    membership_roles[]
+  organizations                                                       organizations                     @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                                                               users                             @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization_themes                                                 organization_themes[]
+  recurrence_contracts                                                recurrence_contracts[]
+  recurrence_exceptions                                               recurrence_exceptions[]
+  reservation_commercial_outcomes                                     reservation_commercial_outcomes[]
+  reservation_history                                                 reservation_history[]
+  reservations_reservations_organization_id_cancelled_byTomemberships reservations[]                    @relation("reservations_organization_id_cancelled_byTomemberships")
+  reservations_reservations_organization_id_created_byTomemberships   reservations[]                    @relation("reservations_organization_id_created_byTomemberships")
+  venue_blocks_venue_blocks_organization_id_cancelled_byTomemberships venue_blocks[]                    @relation("venue_blocks_organization_id_cancelled_byTomemberships")
+  venue_blocks_venue_blocks_organization_id_created_byTomemberships   venue_blocks[]                    @relation("venue_blocks_organization_id_created_byTomemberships")
 
   @@id([organization_id, user_id])
   @@schema("arena_identity")
@@ -89,12 +98,16 @@ model organizations {
   audit_logs           audit_logs[]
   calendar_exceptions  calendar_exceptions[]
   customers            customers[]
+  idempotency_keys     idempotency_keys[]
   invites              invites[]
   memberships          memberships[]
   organization_domains organization_domains[]
   organization_themes  organization_themes?
+  recurrence_contracts recurrence_contracts[]
+  reservations         reservations[]
   roles                roles[]
   sports               sports[]
+  venue_blocks         venue_blocks[]
   venue_units          venue_units[]
   venues               venues[]
 
@@ -205,15 +218,17 @@ model calendar_exceptions {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model customers {
-  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organization_id String        @db.Uuid
-  name            String
-  phone_e164      String?
-  email           String?
-  archived_at     DateTime?     @db.Timestamptz(6)
-  created_at      DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
-  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id      String                 @db.Uuid
+  name                 String
+  phone_e164           String?
+  email                String?
+  archived_at          DateTime?              @db.Timestamptz(6)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  organizations        organizations          @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recurrence_contracts recurrence_contracts[]
+  reservations         reservations[]
 
   @@unique([organization_id, id])
   @@index([organization_id, phone_e164], map: "customers_phone")
@@ -238,22 +253,23 @@ model operating_hours {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model pricing_rules {
-  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organization_id      String    @db.Uuid
-  venue_id             String    @db.Uuid
-  sport_id             String?   @db.Uuid
-  specific_date        DateTime? @db.Date
-  weekday              Int?      @db.SmallInt
-  start_minute         Int       @db.SmallInt
-  end_minute           Int       @db.SmallInt
+  id                   String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id      String         @db.Uuid
+  venue_id             String         @db.Uuid
+  sport_id             String?        @db.Uuid
+  specific_date        DateTime?      @db.Date
+  weekday              Int?           @db.SmallInt
+  start_minute         Int            @db.SmallInt
+  end_minute           Int            @db.SmallInt
   price_per_hour_cents BigInt
-  valid_from           DateTime? @db.Date
-  valid_until          DateTime? @db.Date
-  archived_at          DateTime? @db.Timestamptz(6)
-  created_at           DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime  @default(now()) @db.Timestamptz(6)
-  sports               sports?   @relation(fields: [organization_id, sport_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
-  venues               venues    @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  valid_from           DateTime?      @db.Date
+  valid_until          DateTime?      @db.Date
+  archived_at          DateTime?      @db.Timestamptz(6)
+  created_at           DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime       @default(now()) @db.Timestamptz(6)
+  sports               sports?        @relation(fields: [organization_id, sport_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  venues               venues         @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  reservations         reservations[]
 
   @@unique([organization_id, id])
   @@index([organization_id, venue_id, archived_at, specific_date, weekday], map: "pricing_rules_lookup")
@@ -269,6 +285,8 @@ model sports {
   archived_at     DateTime?       @db.Timestamptz(6)
   created_at      DateTime        @default(now()) @db.Timestamptz(6)
   pricing_rules   pricing_rules[]
+  recurrences     recurrences[]
+  reservations    reservations[]
   organizations   organizations   @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   venue_sports    venue_sports[]
 
@@ -303,13 +321,14 @@ model venue_unit_links {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model venue_units {
-  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organization_id  String             @db.Uuid
-  name             String
-  archived_at      DateTime?          @db.Timestamptz(6)
-  created_at       DateTime           @default(now()) @db.Timestamptz(6)
-  venue_unit_links venue_unit_links[]
-  organizations    organizations      @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id      String                 @db.Uuid
+  name                 String
+  archived_at          DateTime?              @db.Timestamptz(6)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  schedule_occupancies schedule_occupancies[]
+  venue_unit_links     venue_unit_links[]
+  organizations        organizations          @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([organization_id, id])
   @@schema("arena_identity")
@@ -334,11 +353,280 @@ model venues {
   calendar_exceptions          calendar_exceptions[]
   operating_hours              operating_hours[]
   pricing_rules                pricing_rules[]
+  recurrences                  recurrences[]
+  reservations                 reservations[]
+  venue_blocks                 venue_blocks[]
   venue_sports                 venue_sports[]
   venue_unit_links             venue_unit_links[]
   organizations                organizations         @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([organization_id, id])
   @@index([organization_id, archived_at, sort_order, name], map: "venues_order")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model idempotency_keys {
+  organization_id String        @db.Uuid
+  user_id         String        @db.Uuid
+  key             String
+  method          String
+  route           String
+  request_hash    String
+  response_status Int
+  response_body   Json
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  expires_at      DateTime      @default(dbgenerated("(now() + '24:00:00'::interval)")) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  memberships     memberships   @relation(fields: [organization_id, user_id], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([organization_id, user_id, key])
+  @@index([expires_at], map: "idempotency_keys_expiry_idx")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model recurrence_contracts {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  customer_id     String        @db.Uuid
+  billing_mode    String
+  status          String        @default("ACTIVE")
+  ended_at        DateTime?     @db.Timestamptz(6)
+  ended_by        String?       @db.Uuid
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  customers       customers     @relation(fields: [organization_id, customer_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  memberships     memberships?  @relation(fields: [organization_id, ended_by], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recurrences     recurrences[]
+
+  @@unique([organization_id, customer_id, id])
+  @@unique([organization_id, id])
+  @@index([organization_id, customer_id, status], map: "recurrence_contracts_customer")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model recurrence_exceptions {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  recurrence_id   String        @db.Uuid
+  occurrence_date DateTime      @db.Date
+  kind            String
+  reservation_id  String?       @db.Uuid
+  reason          String        @default("")
+  resolved_at     DateTime?     @db.Timestamptz(6)
+  resolved_by     String?       @db.Uuid
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  recurrences     recurrences   @relation(fields: [organization_id, recurrence_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  reservations    reservations? @relation(fields: [organization_id, reservation_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  memberships     memberships?  @relation(fields: [organization_id, resolved_by], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, recurrence_id, occurrence_date])
+  @@schema("arena_identity")
+}
+
+/// SQL migration enforces weekdays and positive durations.
+model recurrence_rules {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String      @db.Uuid
+  recurrence_id    String      @db.Uuid
+  weekday          Int         @db.SmallInt
+  start_time       DateTime    @db.Time(6)
+  duration_minutes Int
+  recurrences      recurrences @relation(fields: [organization_id, recurrence_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@unique([organization_id, recurrence_id, weekday])
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+model recurrences {
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id        String                  @db.Uuid
+  contract_id            String                  @db.Uuid
+  venue_id               String                  @db.Uuid
+  sport_id               String?                 @db.Uuid
+  weekday                Int                     @db.SmallInt
+  start_time             DateTime                @db.Time(6)
+  duration_minutes       Int
+  starts_on              DateTime                @db.Date
+  ends_on                DateTime?               @db.Date
+  effective_from         DateTime                @db.Date
+  price_cents            BigInt
+  monthly_amount_cents   BigInt?
+  previous_recurrence_id String?                 @db.Uuid
+  generated_until        DateTime?               @db.Date
+  created_at             DateTime                @default(now()) @db.Timestamptz(6)
+  recurrence_exceptions  recurrence_exceptions[]
+  recurrence_rules       recurrence_rules[]
+  recurrence_contracts   recurrence_contracts    @relation(fields: [organization_id, contract_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  recurrences            recurrences?            @relation("recurrencesTorecurrences", fields: [organization_id, previous_recurrence_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  other_recurrences      recurrences[]           @relation("recurrencesTorecurrences")
+  sports                 sports?                 @relation(fields: [organization_id, sport_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  venues                 venues                  @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  reservations           reservations[]
+
+  @@unique([organization_id, id])
+  @@index([organization_id, generated_until, starts_on], map: "recurrences_generation")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reservation_commercial_outcomes {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id      String       @db.Uuid
+  reservation_id       String       @db.Uuid
+  kind                 String
+  policy_version       Int
+  amount_cents         BigInt
+  original_price_cents BigInt?
+  policy_percent       Int?
+  lead_seconds         BigInt?
+  applied_exception    Boolean      @default(false)
+  previous_price_cents BigInt?
+  reason               String?
+  waived_by            String?      @db.Uuid
+  created_at           DateTime     @default(now()) @db.Timestamptz(6)
+  reservations         reservations @relation(fields: [organization_id, reservation_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction, map: "reservation_commercial_outcom_organization_id_reservation__fkey")
+  memberships          memberships? @relation(fields: [organization_id, waived_by], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@unique([organization_id, reservation_id, kind], map: "reservation_terminal_outcome", where: raw("(kind = ANY (ARRAY['CANCELLATION'::text, 'NO_SHOW'::text]))"))
+  @@schema("arena_identity")
+}
+
+/// Validated payment references only; financial ledger belongs to Phase 5.
+model reservation_payment_confirmations {
+  id                    String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id       String       @db.Uuid
+  reservation_id        String       @db.Uuid
+  customer_id           String       @db.Uuid
+  external_payment_ref  String
+  approved_amount_cents BigInt
+  approved_at           DateTime     @db.Timestamptz(6)
+  created_at            DateTime     @default(now()) @db.Timestamptz(6)
+  reservations          reservations @relation(fields: [organization_id, customer_id, reservation_id], references: [organization_id, customer_id, id], onDelete: NoAction, onUpdate: NoAction, map: "reservation_payment_confirmat_organization_id_customer_id__fkey")
+
+  @@unique([organization_id, id])
+  @@unique([organization_id, external_payment_ref], map: "reservation_payment_confirmat_organization_id_external_paym_key")
+  @@unique([organization_id, reservation_id, external_payment_ref], map: "reservation_payment_confirmat_organization_id_reservation_i_key")
+  @@index([organization_id, reservation_id], map: "reservation_payment_confirmations_reservation")
+  @@schema("arena_identity")
+}
+
+model reservation_history {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String       @db.Uuid
+  reservation_id  String       @db.Uuid
+  action          String
+  from_status     String?
+  to_status       String?
+  changes         Json         @default("{}")
+  actor_user_id   String?      @db.Uuid
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  memberships     memberships? @relation(fields: [organization_id, actor_user_id], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+  reservations    reservations @relation(fields: [organization_id, reservation_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organization_id, reservation_id, created_at], map: "reservation_history_record")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reservations {
+  id                                                                 String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id                                                    String                            @db.Uuid
+  venue_id                                                           String                            @db.Uuid
+  sport_id                                                           String?                           @db.Uuid
+  customer_id                                                        String                            @db.Uuid
+  recurrence_id                                                      String?                           @db.Uuid
+  occurrence_date                                                    DateTime?                         @db.Date
+  start_at                                                           DateTime                          @db.Timestamptz(6)
+  end_at                                                             DateTime                          @db.Timestamptz(6)
+  status                                                             String
+  source                                                             String
+  price_cents                                                        BigInt
+  price_source                                                       String
+  pricing_rule_id                                                    String?                           @db.Uuid
+  price_breakdown                                                    Json                              @default("[]")
+  policy_version                                                     Int                               @default(1)
+  notes                                                              String                            @default("")
+  created_by                                                         String?                           @db.Uuid
+  confirmed_at                                                       DateTime?                         @db.Timestamptz(6)
+  cancelled_at                                                       DateTime?                         @db.Timestamptz(6)
+  cancelled_by                                                       String?                           @db.Uuid
+  cancellation_reason                                                String?
+  no_show_at                                                         DateTime?                         @db.Timestamptz(6)
+  version                                                            Int                               @default(1)
+  created_at                                                         DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                                                         DateTime                          @default(now()) @db.Timestamptz(6)
+  recurrence_exceptions                                              recurrence_exceptions[]
+  reservation_commercial_outcomes                                    reservation_commercial_outcomes[]
+  reservation_history                                                reservation_history[]
+  memberships_reservations_organization_id_cancelled_byTomemberships memberships?                      @relation("reservations_organization_id_cancelled_byTomemberships", fields: [organization_id, cancelled_by], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+  memberships_reservations_organization_id_created_byTomemberships   memberships?                      @relation("reservations_organization_id_created_byTomemberships", fields: [organization_id, created_by], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+  customers                                                          customers                         @relation(fields: [organization_id, customer_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  organizations                                                      organizations                     @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pricing_rules                                                      pricing_rules?                    @relation(fields: [organization_id, pricing_rule_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  recurrences                                                        recurrences?                      @relation(fields: [organization_id, recurrence_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  sports                                                             sports?                           @relation(fields: [organization_id, sport_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  venues                                                             venues                            @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  schedule_occupancies                                               schedule_occupancies[]
+  reservation_payment_confirmations                                  reservation_payment_confirmations[]
+
+  @@unique([organization_id, id])
+  @@unique([organization_id, customer_id, id])
+  @@unique([recurrence_id, occurrence_date])
+  @@index([organization_id, start_at, venue_id], map: "reservations_agenda")
+  @@index([organization_id, customer_id, start_at(sort: Desc)], map: "reservations_customer")
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+model schedule_occupancies {
+  id              String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String                    @db.Uuid
+  unit_id         String                    @db.Uuid
+  start_at        DateTime                  @db.Timestamptz(6)
+  end_at          DateTime                  @db.Timestamptz(6)
+  period          Unsupported("tstzrange")? @default(dbgenerated("tstzrange(start_at, end_at, '[)'::text)"))
+  reservation_id  String?                   @db.Uuid
+  block_id        String?                   @db.Uuid
+  active          Boolean                   @default(true)
+  created_at      DateTime                  @default(now()) @db.Timestamptz(6)
+  venue_blocks    venue_blocks?             @relation(fields: [organization_id, block_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  reservations    reservations?             @relation(fields: [organization_id, reservation_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+  venue_units     venue_units               @relation(fields: [organization_id, unit_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@index([organization_id, block_id], map: "schedule_occ_block_final", where: raw("(block_id IS NOT NULL)"))
+  @@index([organization_id(ops: raw("gist_uuid_ops")), period], map: "schedule_occ_org_period_final", type: Gist, where: raw("active"))
+  @@index([organization_id, reservation_id], map: "schedule_occ_reservation_final", where: raw("(reservation_id IS NOT NULL)"))
+  @@schema("arena_identity")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model venue_blocks {
+  id                                                                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id                                                    String                 @db.Uuid
+  venue_id                                                           String                 @db.Uuid
+  start_at                                                           DateTime               @db.Timestamptz(6)
+  end_at                                                             DateTime               @db.Timestamptz(6)
+  reason                                                             String
+  created_by                                                         String                 @db.Uuid
+  cancelled_at                                                       DateTime?              @db.Timestamptz(6)
+  cancelled_by                                                       String?                @db.Uuid
+  created_at                                                         DateTime               @default(now()) @db.Timestamptz(6)
+  schedule_occupancies                                               schedule_occupancies[]
+  memberships_venue_blocks_organization_id_cancelled_byTomemberships memberships?           @relation("venue_blocks_organization_id_cancelled_byTomemberships", fields: [organization_id, cancelled_by], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+  memberships_venue_blocks_organization_id_created_byTomemberships   memberships            @relation("venue_blocks_organization_id_created_byTomemberships", fields: [organization_id, created_by], references: [organization_id, user_id], onDelete: NoAction, onUpdate: NoAction)
+  organizations                                                      organizations          @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  venues                                                             venues                 @relation(fields: [organization_id, venue_id], references: [organization_id, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, id])
+  @@index([organization_id, start_at, venue_id], map: "venue_blocks_agenda")
   @@schema("arena_identity")
 }
