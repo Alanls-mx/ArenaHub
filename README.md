@@ -1,6 +1,6 @@
 # ArenaHub
 
-Na branch da Fase 4, a Web acrescenta agenda diária/semanal, reservas, bloqueios e mensalistas. Veja [PHASE4_GATE.md](docs/PHASE4_GATE.md) para o estado efetivamente validado; os gates locais passaram e a aprovação formal depende do CI remoto e do merge.
+A Web inclui agenda diária/semanal, reservas, bloqueios e mensalistas. A Fase 4 está concluída na `main`; veja [PHASE4_GATE.md](docs/PHASE4_GATE.md) para os gates locais, CI Linux e limites de produção.
 
 SaaS multi-tenant de gestão de arenas esportivas. A especificação vigente é [docs/ARENAHUB_MASTER_V3.2.md](docs/ARENAHUB_MASTER_V3.2.md). Instruções para agentes estão em [AGENTS.md](AGENTS.md).
 

@@ -1,6 +1,6 @@
 # Gate da Fase 4 — motor de reservas
 
-Estado local em 28/11/2026: **IMPLEMENTAÇÃO E GATES LOCAIS APROVADOS; PUBLICAÇÃO E CI REMOTO PENDENTES**. A pendência P1 de validação dos três escritores foi encerrada localmente. A branch `feat/phase-4-booking-engine` parte de `main` `af3bad591287cbeb948c51bc164ffc5c5e4df47a`. A missão de encerramento autoriza PR e merge tradicional após os checks remotos. Pareceres históricos das Fases 1–3 permanecem intactos.
+Estado em 28/11/2026: **FASE 4 CONCLUÍDA — MOTOR DE RESERVAS, MENSALISTAS E AGENDA EM TEMPO REAL APROVADOS.** A pendência P1 de validação dos três escritores foi encerrada no PostgreSQL descartável local e no CI Linux. O PR de implementação foi mesclado tradicionalmente na `main`, cujo CI também passou. Pareceres históricos das Fases 1–3 permanecem intactos.
 
 ## Entregas verificadas
 
@@ -28,9 +28,12 @@ Estado local em 28/11/2026: **IMPLEMENTAÇÃO E GATES LOCAIS APROVADOS; PUBLICA�
 
 Uma execução anterior de `pnpm test:integration` encerrou o fork Windows do Vitest com `0xC0000409` durante `access.integration.test.ts` após 77 testes passarem. Uma repetição serial passou 82/82 antes dos novos testes de concorrência e falha; as três repetições seguintes no comando padrão passaram 84/84, 85/85 e 86/86. A causa nativa continua não comprovada, como no registro histórico `PHASE1_RUNNER_A2_RESOLUTION.md`. Nenhum teste foi excluído. O primeiro ensaio de outage do WebSocket falhou por mudança da porta dinâmica do fixture (32791→32792); um fixture isolado com porta fixa passou, sem mudança de produção.
 
-## Pendências para encerramento formal
+## Publicação e CI Linux
 
-- CI remoto no SHA publicado, revisão do PR e merge tradicional ainda não ocorreram. Sem isso, não há aprovação definitiva da fase.
-- Proxy de upgrade WebSocket no host de produção, tempo de configuração por pessoa e latência de rede real não foram medidos. Decisões comerciais abertas no ADR-014 não geram cobrança automática.
+O [PR #6](https://github.com/Alanls-mx/ArenaHub/pull/6) publicou o HEAD `61fe427da35e58b5a094dff7e9a026efcea0ebfb`, sem conflitos ou alterações posteriores. Os runs de [push](https://github.com/Alanls-mx/ArenaHub/actions/runs/46109548816) e [PR](https://github.com/Alanls-mx/ArenaHub/actions/runs/46109581156) passaram nesse SHA: lockfile congelado, Prisma, lint, formatação, typecheck, OpenAPI, unitários, integração com PostgreSQL descartável, migrations, `db:check` e build. A suíte remota inclui os três escritores. O merge tradicional `b06fca76a320801a5aeb05e92ad533e988b33db9` preserva a `main` anterior e o commit validado como pais. O [CI da `main`](https://github.com/Alanls-mx/ArenaHub/actions/runs/46109776329) passou nesse merge. A `main` local foi sincronizada por fast-forward e estava limpa após o merge. Nove migrations, inclusive `20261127015000_booking_engine`, foram aplicadas apenas em bancos descartáveis; não houve deploy ou migração de banco real.
 
-**Veredito:** Fase 4 implementada e validada localmente, sem P0/P1 remanescente comprovado. O gate formal aguarda PR, CI remoto e CI da main após merge. Não iniciar Fase 5.
+## Limites posteriores à Fase 4
+
+O proxy de upgrade WebSocket no host de produção, tempo de configuração por pessoa e latência de rede real não foram medidos. Decisões comerciais abertas no ADR-014 não geram cobrança automática. Cobranças, pagamentos, Mercado Pago, conciliação, reembolsos e inadimplência efetiva pertencem à Fase 5. DNS/TLS, SMTP de produção, homologação jurídica, reavaliação de RLS e carga representativa de produção permanecem antes do piloto, conforme seus gates próprios.
+
+**Veredito:** nenhum P0/P1 remanescente comprovado; gate da Fase 4 aprovado. Não iniciar Fase 5 nesta missão.
