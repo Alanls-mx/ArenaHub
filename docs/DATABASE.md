@@ -20,7 +20,7 @@ As verificações semânticas do spike continuam separadas. As tabelas da fila s
 
 A migration `20261127014000_operational_structure` acrescenta ao schema `arena_identity` as nove entidades `customers`, `sports`, `venues`, `venue_units`, `venue_unit_links`, `venue_sports`, `operating_hours`, `calendar_exceptions` e `pricing_rules`. O arquivo `identity.prisma` espelha as colunas e relações para detectar drift; CHECKs, índices de expressão, `UNIQUE NULLS NOT DISTINCT` e triggers continuam definidos pelo SQL manual e inspecionados por `db:check`.
 
-`venues` são ofertáveis e `venue_units` são recursos físicos elementares. O service cria uma unidade exclusiva ao cadastrar venue simples. Links compartilham unidade somente dentro da organização; FKs compostas impedem cruzamento de arenas. Triggers diferidos exigem ao menos uma unidade ativa em venue ativo ao confirmar a transação. Arquivar uma unidade usada por venue ativo falha. Arquivar venue mantém seus links históricos. A Fase 4 deverá adquirir o mesmo lock do venue antes de criar reserva ou alterar composição e recusar troca que afete ocupação futura.
+`venues` são ofertáveis e `venue_units` são recursos físicos elementares. O service cria uma unidade exclusiva ao cadastrar venue simples. Links compartilham unidade somente dentro da organização; FKs compostas impedem cruzamento de arenas. Triggers diferidos exigem ao menos uma unidade ativa em venue ativo ao confirmar a transação. Arquivar uma unidade usada por venue ativo falha. Arquivar venue mantém seus links históricos. Reserva, bloqueio e alteração de composição adquirem o lock do venue na mesma ordem após o lock da organização; a alteração estrutural recusa troca que afete ocupação futura.
 
 Clientes possuem identidade interna, nome e contato opcional (telefone E.164 ou e-mail normalizado), sem login de cliente. Arquivamento preserva a linha. Modalidades e venues têm nome único por organização sem distinguir caixa, inclusive após arquivamento; criar outro nome igual exige restauração ou escolha de outro nome. Espaços suportam várias modalidades.
 
@@ -40,7 +40,7 @@ Versões recorrentes são exclusivas por organização, contrato e vigência via
 
 ## Modelo comercial planejado
 
-A Fase 4 implementa clientes, venues, unidades e ocupações. Reservas duram 60 minutos por padrão e a grade padrão é de 15 minutos; o período ocupado é contínuo e semiaberto. A política V1 de cancelamento e no-show está definida no ADR-014. Exceções comerciais, feriados e reposições permanecem pendentes.
+As Fases 3 e 4 implementaram clientes, venues, unidades e ocupações. Reservas duram 60 minutos por padrão e a grade padrão é de 15 minutos; o período ocupado é contínuo e semiaberto. A política V1 de cancelamento e no-show está definida no ADR-014. Exceções comerciais, feriados e reposições permanecem pendentes.
 
 A Fase 5 acrescenta competências e cobranças, reutilizando os contratos da Fase 4 e o cálculo proporcional já definido para o primeiro mês. Atraso gera alerta e preserva reservas. Cobranças, pagamentos, estornos e alocações preservam histórico e cliente. A primeira versão comercial exige Pix confirmado automaticamente para a arena beneficiária. Ver [plano Mercado Pago](MERCADO_PAGO.md) e [matriz de impacto](decisions/ADR-010-product-and-access.md).
 
